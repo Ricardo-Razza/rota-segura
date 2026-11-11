@@ -1,0 +1,3 @@
+# O wrapper do Maven precisa de LF para rodar em Linux (Docker, CI).
+mvnw text eol=lf
+*.cmd text eol=crlf

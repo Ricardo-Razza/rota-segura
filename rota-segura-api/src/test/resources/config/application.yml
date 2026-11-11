@@ -1,0 +1,14 @@
+# Valores fictícios, usados só nos testes. O banco real vem do Testcontainers (@ServiceConnection).
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:1/nao-usado
+    username: nao-usado
+    password: nao-usado
+
+rota-segura:
+  api-externa:
+    base-url: http://localhost:1
+  auth:
+    jwt-secret: segredo-ficticio-somente-para-testes-0123456789
+    admin-login: admin.teste
+    admin-senha: senha-ficticia-de-teste

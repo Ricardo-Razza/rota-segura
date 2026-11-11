@@ -1,0 +1,75 @@
+spring:
+  application:
+    name: rota-segura-api
+  mvc:
+    problemdetails:
+      enabled: true
+  datasource:
+    url: ${ROTA_DB_URL}
+    username: ${ROTA_DB_USUARIO}
+    password: ${ROTA_DB_SENHA}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+
+rota-segura:
+  api-externa:
+    base-url: ${ROTA_API_BASE_URL}
+    # Valor completo do cabeçalho Authorization; vazio = sem cabeçalho.
+    authorization: ${ROTA_API_AUTHORIZATION:}
+    connect-timeout: 2s
+    read-timeout: 5s
+    max-paginas: ${ROTA_API_MAX_PAGINAS:200}
+    parametro-pagina: page
+  cache:
+    cadastros-ttl: 10m
+    tempo-real-ttl: 30s
+    ultimo-valor-ttl: 24h
+  auth:
+    jwt-secret: ${ROTA_JWT_SECRET}
+    access-ttl: 15m
+    refresh-ttl: 7d
+    cookie-secure: ${ROTA_COOKIE_SECURE:true}
+    cors-origens: ${ROTA_CORS_ORIGENS:http://localhost:4200}
+    login-max-tentativas: 5
+    login-janela: 1m
+    # Administrador inicial: criado na subida apenas se ainda não existir.
+    admin-login: ${ROTA_ADMIN_LOGIN:}
+    admin-senha: ${ROTA_ADMIN_SENHA:}
+
+springdoc:
+  api-docs:
+    enabled: ${ROTA_SWAGGER_HABILITADO:false}
+  swagger-ui:
+    enabled: ${ROTA_SWAGGER_HABILITADO:false}
+
+resilience4j:
+  retry:
+    configs:
+      default:
+        max-attempts: 3
+        wait-duration: 300ms
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
+        retry-exceptions:
+          - org.springframework.web.client.HttpServerErrorException
+          - org.springframework.web.client.ResourceAccessException
+  circuitbreaker:
+    configs:
+      default:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 2
+        record-exceptions:
+          - org.springframework.web.client.HttpServerErrorException
+          - org.springframework.web.client.ResourceAccessException
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
