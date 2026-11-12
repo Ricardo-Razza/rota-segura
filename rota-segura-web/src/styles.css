@@ -1,44 +1,100 @@
-/* Tokens de design do Rota Segura. Tema escuro é o padrão; o claro é alternável (data-tema="claro"). */
+/*
+ * Tokens de design do Rota Segura, derivados do Sistema de Cores (Design System v0.1).
+ * Tema escuro é o padrão; o claro é alternável (data-tema="claro").
+ * Componentes usam sempre o token semântico, nunca o hex literal.
+ */
 :root {
-  --fundo: #0b1220;
-  --superficie: #111a2e;
-  --superficie-2: #16213a;
-  --borda: #1e2a44;
-  --texto: #e6eaf2;
-  --texto-suave: #9aa7bd;
-  --sucesso: #22c55e;
-  --atencao: #f59e0b;
-  --critico: #ef4444;
-  --info: #3b82f6;
-  --sucesso-fundo: rgba(34, 197, 94, 0.14);
-  --atencao-fundo: rgba(245, 158, 11, 0.14);
-  --critico-fundo: rgba(239, 68, 68, 0.14);
-  --info-fundo: rgba(59, 130, 246, 0.14);
-  --neutro-fundo: rgba(154, 167, 189, 0.14);
-  --foco: #7cb3ff;
-  --raio: 10px;
-  --sombra: 0 1px 2px rgba(0, 0, 0, 0.35);
+  /* Paleta de marca (fixa nos dois temas) */
+  --rs-verde-50: #ecf7ee;
+  --rs-verde-200: #a6d9b1;
+  --rs-verde-300: #6fc285;
+  --rs-verde-500: #2f8a44;
+  --rs-verde-600: #226e36;
+  --rs-teal-500: #2ea482;
+  --rs-azul-50: #e8efff;
+  --rs-azul-300: #5e87d6;
+  --rs-azul-500: #1d54a8;
+  --rs-amarelo-300: #ffdb47;
+  --rs-amarelo-400: #f8c807;
+  --rs-amarelo-500: #d8aa00;
+  --rs-vermelho-500: #cf2e2e;
+
+  --fonte: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+  --fonte-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  --raio: 12px;
+  --raio-sm: 9px;
+
+  /* Tema escuro */
+  --fundo: #07111f;
+  --superficie: #0f1c30;
+  --superficie-2: #142440;
+  --superficie-sutil: #0c1828;
+  --superficie-muda: #1c2c46;
+  --borda: #1f2f48;
+  --borda-forte: #2f4264;
+  --texto: #eef2f8;
+  --texto-suave: #aebac9;
+  --texto-mudo: #7a8699;
+  --link: #7fa6ec;
+
+  --marca: var(--rs-verde-300);
+  --marca-hover: var(--rs-verde-200);
+  --marca-secundaria: var(--rs-azul-300);
+  --acento: var(--rs-amarelo-300);
+  --texto-sobre-marca: #07111f;
+
+  --sucesso: #6fc285;
+  --atencao: #ffdb47;
+  /* Texto em âmbar: no escuro o próprio âmbar já passa AA. */
+  --atencao-texto: #ffdb47;
+  --critico: #ff6b6b;
+  --info: #7fa6ec;
+  --sucesso-fundo: rgba(111, 194, 133, 0.14);
+  --atencao-fundo: rgba(255, 219, 71, 0.12);
+  --critico-fundo: rgba(255, 107, 107, 0.12);
+  --info-fundo: rgba(127, 166, 236, 0.12);
+  --neutro-fundo: rgba(174, 186, 201, 0.12);
+  --foco: var(--rs-verde-300);
+
+  --sombra: 0 1px 2px rgba(0, 0, 0, 0.45);
+  --sombra-media: 0 6px 16px -6px rgba(0, 0, 0, 0.6), 0 2px 4px rgba(0, 0, 0, 0.4);
   color-scheme: dark;
 }
 
 :root[data-tema='claro'] {
-  --fundo: #f4f6fa;
+  --fundo: #f4f6f8;
   --superficie: #ffffff;
-  --superficie-2: #eef2f8;
-  --borda: #d8dfea;
-  --texto: #101828;
-  --texto-suave: #475467;
-  --sucesso: #15803d;
-  --atencao: #b45309;
-  --critico: #b91c1c;
-  --info: #1d4ed8;
-  --sucesso-fundo: rgba(21, 128, 61, 0.12);
-  --atencao-fundo: rgba(180, 83, 9, 0.12);
-  --critico-fundo: rgba(185, 28, 28, 0.1);
-  --info-fundo: rgba(29, 78, 216, 0.1);
-  --neutro-fundo: rgba(71, 84, 103, 0.1);
-  --foco: #1d4ed8;
-  --sombra: 0 1px 2px rgba(16, 24, 40, 0.08);
+  --superficie-2: #f0f3f6;
+  --superficie-sutil: #f0f3f6;
+  --superficie-muda: #e6eaef;
+  --borda: #e2e7ed;
+  --borda-forte: #c7cfd8;
+  --texto: #0f1d33;
+  --texto-suave: #4a5668;
+  --texto-mudo: #6b7687;
+  --link: var(--rs-azul-500);
+
+  --marca: var(--rs-verde-500);
+  --marca-hover: var(--rs-verde-600);
+  --marca-secundaria: var(--rs-azul-500);
+  --acento: var(--rs-amarelo-400);
+  --texto-sobre-marca: #ffffff;
+
+  --sucesso: var(--rs-verde-500);
+  --atencao: var(--rs-amarelo-500);
+  /* O âmbar #D8AA00 não passa AA como texto sobre branco; para texto usamos um tom escuro (6:1). */
+  --atencao-texto: #7a5f00;
+  --critico: var(--rs-vermelho-500);
+  --info: var(--rs-azul-500);
+  --sucesso-fundo: var(--rs-verde-50);
+  --atencao-fundo: #fff6d6;
+  --critico-fundo: #fde7e7;
+  --info-fundo: var(--rs-azul-50);
+  --neutro-fundo: #e6eaef;
+  --foco: var(--rs-verde-500);
+
+  --sombra: 0 1px 2px rgba(15, 30, 50, 0.06), 0 1px 1px rgba(15, 30, 50, 0.04);
+  --sombra-media: 0 6px 16px -6px rgba(15, 30, 50, 0.18), 0 2px 4px rgba(15, 30, 50, 0.06);
   color-scheme: light;
 }
 
@@ -57,21 +113,23 @@ body {
 body {
   background: var(--fundo);
   color: var(--texto);
-  font-family: 'Segoe UI', system-ui, -apple-system, Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family: var(--fonte);
   font-size: 14px;
-  line-height: 1.45;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
 }
 
 h1,
 h2,
 h3 {
   margin: 0;
-  font-weight: 600;
+  font-weight: 700;
   line-height: 1.25;
+  letter-spacing: -0.01em;
 }
 
 a {
-  color: var(--info);
+  color: var(--link);
 }
 
 button,
@@ -86,25 +144,58 @@ select {
   outline-offset: 2px;
 }
 
+.rs-mono {
+  font-family: var(--fonte-mono);
+  letter-spacing: -0.01em;
+}
+
+/* Marca: símbolo do logotipo + nome com as cores do logo (Rota azul, Segura verde). */
+.rs-marca {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+.rs-marca img {
+  flex: none;
+  width: 40px;
+  height: auto;
+}
+.rs-marca__rota {
+  color: var(--marca-secundaria);
+}
+.rs-marca__segura {
+  color: var(--marca);
+}
+
 .rs-botao {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 7px 12px;
+  padding: 8px 14px;
   border: 1px solid var(--borda);
-  border-radius: 8px;
-  background: var(--superficie-2);
+  border-radius: var(--raio-sm);
+  background: var(--superficie-muda);
+  font-weight: 600;
   cursor: pointer;
 }
 
 .rs-botao:hover {
-  border-color: var(--texto-suave);
+  border-color: var(--borda-forte);
 }
 
+/* Verde confirma/avança; azul fica para navegação e informação. */
 .rs-botao--primario {
-  background: var(--info);
-  border-color: var(--info);
-  color: #fff;
+  background: var(--marca);
+  border-color: var(--marca);
+  color: var(--texto-sobre-marca);
+}
+
+.rs-botao--primario:hover {
+  background: var(--marca-hover);
+  border-color: var(--marca-hover);
 }
 
 .rs-botao[disabled] {
@@ -115,8 +206,12 @@ select {
 .rs-campo {
   padding: 7px 10px;
   border: 1px solid var(--borda);
-  border-radius: 8px;
+  border-radius: var(--raio-sm);
   background: var(--superficie);
+}
+
+.rs-campo:focus-visible {
+  border-color: var(--foco);
 }
 
 .rs-somente-leitor {

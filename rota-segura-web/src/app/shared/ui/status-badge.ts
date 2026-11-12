@@ -28,7 +28,7 @@ import { Tom } from './tom';
       background: var(--sucesso-fundo);
     }
     .badge--atencao {
-      color: var(--atencao);
+      color: var(--atencao-texto);
       background: var(--atencao-fundo);
     }
     .badge--critico {

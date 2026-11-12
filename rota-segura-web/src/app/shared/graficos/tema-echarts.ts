@@ -44,7 +44,8 @@ export function temaEcharts(t: TokensDeTema): Record<string, unknown> {
   return {
     color: [t.info, t.sucesso, t.atencao, t.critico, t.textoSuave],
     backgroundColor: 'transparent',
-    textStyle: { color: t.texto, fontFamily: 'inherit' },
+    // O canvas do ECharts não herda a fonte do CSS: repetimos a pilha do token --fonte.
+    textStyle: { color: t.texto, fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif" },
     title: { textStyle: { color: t.texto }, subtextStyle: { color: t.textoSuave } },
     legend: { textStyle: { color: t.texto }, inactiveColor: t.textoSuave },
     tooltip: {

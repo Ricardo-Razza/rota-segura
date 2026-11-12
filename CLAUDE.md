@@ -121,7 +121,11 @@ Todos os campos chegam como string. Converta ids e coordenadas com segurança, a
 ## 5. Identidade visual
 
 Manter o padrão das telas atuais do sistema:
-- Tema escuro padrão: fundo `#0B1220`, superfície `#111A2E`, borda `#1E2A44`, texto `#E6EAF2`; verde = sucesso, âmbar = atenção, vermelho = crítico, azul = info. Tema claro equivalente alternável.
+- Fonte da verdade: **Sistema de Cores Rota Segura (Design System v0.1)**, aplicado em `rota-segura-web/src/styles.css`. Componentes usam sempre o token, nunca o hex literal.
+- Marca (derivada do logo): verde `#2F8A44` (primária: confirmar/avançar), azul `#1D54A8` (secundária: navegação, links, mapas), amarelo `#F8C807` (acento pontual, sempre com texto escuro), teal `#2EA482` (apoio). Proporção 60% neutro · 30% verde+azul · 10% amarelo.
+- Tema escuro padrão: fundo `#07111F`, superfície `#0F1C30`, elevada `#142440`, borda `#1F2F48`, texto `#EEF2F8` / secundário `#AEBAC9`; marca `#6FC285`. Tema claro alternável: fundo `#F4F6F8`, superfície `#FFFFFF`, borda `#E2E7ED`, texto `#0F1D33` / secundário `#4A5668`.
+- Semânticas (claro / escuro): sucesso `#2F8A44`/`#6FC285`, info `#1D54A8`/`#7FA6EC`, atenção `#D8AA00`/`#FFDB47`, crítico `#CF2E2E`/`#FF6B6B`. Texto em âmbar no tema claro usa `--atencao-texto` `#7A5F00` (AA).
+- Tipografia: Plus Jakarta Sans (interface) e JetBrains Mono (valores técnicos). Logo: `rota-segura-web/public/logo.svg` (só o símbolo), acompanhado do nome "Rota" em azul e "Segura" em verde.
 - Menu lateral recolhível com grupos **OPERACIONAL** (Dashboard, Presença, Jornada, Veículos, Alertas) e **GESTÃO** (Alunos, Relatórios); rodapé com usuário, perfil, troca de tema e sair.
 - Filtros globais no topo (ano letivo, escola, ano escolar, turma) guardados num store e refletidos na URL.
 - Todo card trata quatro estados: **carregando, vazio, erro (com "tentar de novo") e desatualizado**.

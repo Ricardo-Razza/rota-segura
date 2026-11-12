@@ -77,7 +77,7 @@ export type EstadoCard = 'carregando' | 'vazio' | 'erro' | 'ok' | 'desatualizado
     .aviso {
       padding: 2px 8px;
       border-radius: 999px;
-      color: var(--atencao);
+      color: var(--atencao-texto);
       background: var(--atencao-fundo);
       font-size: 12px;
       font-weight: 600;

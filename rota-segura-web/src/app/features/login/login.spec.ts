@@ -63,6 +63,16 @@ describe('Login', () => {
     expect(el.querySelector('[role="alert"]')?.textContent).toBe('Informe o login e a senha.');
   });
 
+  it('mostra a marca: símbolo decorativo e o nome "Rota Segura" com espaço', () => {
+    const { el } = montar();
+
+    const logo = el.querySelector<HTMLImageElement>('.rs-marca img');
+    expect(logo?.getAttribute('src')).toBe('logo.svg');
+    // O nome está escrito ao lado; o símbolo é decorativo para não ser lido duas vezes.
+    expect(logo?.getAttribute('alt')).toBe('');
+    expect(el.querySelector('.rs-marca')?.textContent?.trim()).toBe('Rota Segura');
+  });
+
   it('os campos têm rótulo e autocomplete corretos', () => {
     const { el } = montar();
 

@@ -25,10 +25,12 @@ const CHAVE_MENU = 'rs.menu-recolhido';
     <div class="shell" [class.shell--recolhido]="recolhido()">
       <aside class="menu">
         <div class="marca">
-          <span class="logo" aria-hidden="true">RS</span>
-          @if (!recolhido()) {
-            <span class="nome">Rota Segura</span>
-          }
+          <span class="rs-marca nome">
+            <img src="logo.svg" alt="" width="40" height="32" />
+            <span [class.rs-somente-leitor]="recolhido()">
+              <span class="rs-marca__rota">Rota </span><span class="rs-marca__segura">Segura</span>
+            </span>
+          </span>
           <button
             type="button"
             class="recolher"
@@ -161,37 +163,36 @@ const CHAVE_MENU = 'rs.menu-recolhido';
     .shell--recolhido .marca {
       flex-direction: column;
     }
-    .logo {
-      display: grid;
-      place-items: center;
-      width: 32px;
-      height: 32px;
-      border-radius: 8px;
-      background: var(--info);
-      color: #fff;
-      font-weight: 700;
-      font-size: 13px;
-    }
     .nome {
       flex: 1;
-      font-weight: 700;
+      min-width: 0;
+      font-size: 17px;
+    }
+    .shell--recolhido .nome {
+      flex: none;
     }
     .recolher {
       border: 1px solid var(--borda);
       border-radius: 6px;
       background: none;
+      color: var(--texto-suave);
       cursor: pointer;
       padding: 2px 8px;
+    }
+    .recolher:hover {
+      border-color: var(--borda-forte);
+      color: var(--texto);
     }
     nav {
       flex: 1;
       padding: 8px;
     }
     .grupo h2 {
-      padding: 12px 8px 4px;
-      color: var(--texto-suave);
+      padding: 14px 8px 6px;
+      color: var(--texto-mudo);
       font-size: 11px;
-      letter-spacing: 0.08em;
+      font-weight: 600;
+      letter-spacing: 0.14em;
     }
     ul {
       list-style: none;
@@ -212,6 +213,7 @@ const CHAVE_MENU = 'rs.menu-recolhido';
     }
     nav a.ativo {
       background: var(--info-fundo);
+      box-shadow: inset 3px 0 0 var(--marca-secundaria);
       font-weight: 600;
     }
     .sigla {
@@ -223,6 +225,7 @@ const CHAVE_MENU = 'rs.menu-recolhido';
       border: 1px solid var(--borda);
       border-radius: 6px;
       font-size: 11px;
+      font-weight: 600;
       color: var(--texto-suave);
     }
     nav a.ativo .sigla {

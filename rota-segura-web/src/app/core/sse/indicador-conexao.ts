@@ -33,7 +33,7 @@ import { SseService } from './sse.service';
       background: var(--sucesso-fundo);
     }
     .selo--atencao {
-      color: var(--atencao);
+      color: var(--atencao-texto);
       background: var(--atencao-fundo);
     }
     .selo--neutro {

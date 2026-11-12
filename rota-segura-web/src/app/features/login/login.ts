@@ -10,7 +10,11 @@ import { mensagemDeErro } from '../../core/auth/erro.interceptor';
   template: `
     <main class="pagina">
       <form class="cartao" (submit)="entrar($event, login.value, senha.value)" novalidate>
-        <div class="marca"><span class="logo" aria-hidden="true">RS</span> Rota Segura</div>
+        <div class="rs-marca marca">
+          <img src="logo.svg" alt="" width="64" height="51" />
+          <span><span class="rs-marca__rota">Rota </span><span class="rs-marca__segura">Segura</span></span>
+        </div>
+        <p class="subtitulo">Gestão escolar · jornada do aluno</p>
         <h1>Entrar no painel</h1>
 
         <label for="login">Login</label>
@@ -35,37 +39,44 @@ import { mensagemDeErro } from '../../core/auth/erro.interceptor';
       place-items: center;
       min-height: 100vh;
       padding: 16px;
+      /* Halo discreto nas cores da marca, sem competir com o formulário. */
+      background:
+        radial-gradient(60rem 30rem at 15% -10%, color-mix(in srgb, var(--marca) 12%, transparent), transparent 70%),
+        radial-gradient(50rem 30rem at 110% 110%, color-mix(in srgb, var(--marca-secundaria) 12%, transparent), transparent 70%),
+        var(--fundo);
     }
     .cartao {
       display: flex;
       flex-direction: column;
       gap: 8px;
-      width: min(360px, 100%);
-      padding: 28px;
+      width: min(380px, 100%);
+      padding: 32px 28px 28px;
       border: 1px solid var(--borda);
-      border-radius: 14px;
+      border-radius: 18px;
       background: var(--superficie);
-      box-shadow: var(--sombra);
+      box-shadow: var(--sombra-media);
     }
     .marca {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-weight: 700;
+      align-self: center;
+      flex-direction: column;
+      gap: 8px;
+      font-size: 26px;
     }
-    .logo {
-      display: grid;
-      place-items: center;
-      width: 32px;
-      height: 32px;
-      border-radius: 8px;
-      background: var(--info);
-      color: #fff;
-      font-size: 13px;
+    .marca img {
+      width: 88px;
+    }
+    .subtitulo {
+      margin: 0;
+      align-self: center;
+      color: var(--texto-mudo);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
     }
     h1 {
-      margin: 12px 0 8px;
-      font-size: 20px;
+      margin: 18px 0 6px;
+      font-size: 18px;
     }
     label {
       margin-top: 6px;
