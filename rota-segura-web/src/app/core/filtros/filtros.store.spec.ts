@@ -11,14 +11,21 @@ describe('FiltrosStore', () => {
   let store: FiltrosStore;
 
   beforeEach(async () => {
-    TestBed.configureTestingModule({ providers: [provideRouter([{ path: '**', component: Vazia }])] });
+    TestBed.configureTestingModule({
+      providers: [provideRouter([{ path: '**', component: Vazia }])],
+    });
     router = TestBed.inject(Router);
     await router.navigateByUrl('/presenca?anoLetivo=2026&escolaId=3&turmaId=12');
     store = TestBed.inject(FiltrosStore);
   });
 
   it('começa com os filtros que estão na URL', () => {
-    expect(store.filtros()).toEqual({ anoLetivo: 2026, escolaId: 3, anoEscolar: null, turmaId: 12 });
+    expect(store.filtros()).toEqual({
+      anoLetivo: 2026,
+      escolaId: 3,
+      anoEscolar: null,
+      turmaId: 12,
+    });
     expect(store.parametros()).toEqual({ anoLetivo: '2026', escolaId: '3', turmaId: '12' });
   });
 
@@ -42,7 +49,12 @@ describe('FiltrosStore', () => {
   it('acompanha a navegação (voltar, avançar, link colado)', async () => {
     await router.navigateByUrl('/jornada?escolaId=5');
 
-    expect(store.filtros()).toEqual({ anoLetivo: null, escolaId: 5, anoEscolar: null, turmaId: null });
+    expect(store.filtros()).toEqual({
+      anoLetivo: null,
+      escolaId: 5,
+      anoEscolar: null,
+      turmaId: null,
+    });
   });
 
   it('limpar remove todos os filtros da URL', async () => {
@@ -53,7 +65,9 @@ describe('FiltrosStore', () => {
   });
 
   it('ignora valores inválidos na URL', () => {
-    const filtros = filtrosDaUrl(new URLSearchParams('anoLetivo=abc&escolaId=-1&turmaId=1.5&anoEscolar='));
+    const filtros = filtrosDaUrl(
+      new URLSearchParams('anoLetivo=abc&escolaId=-1&turmaId=1.5&anoEscolar='),
+    );
 
     expect(filtros).toEqual({ anoLetivo: null, escolaId: null, anoEscolar: null, turmaId: null });
   });

@@ -16,7 +16,11 @@ export class ToastService {
   private readonly _toasts = signal<Toast[]>([]);
   readonly toasts = this._toasts.asReadonly();
 
-  mostrar(mensagem: string, tom: TomToast = 'info', opcoes: { persistente?: boolean; duracaoMs?: number } = {}): number {
+  mostrar(
+    mensagem: string,
+    tom: TomToast = 'info',
+    opcoes: { persistente?: boolean; duracaoMs?: number } = {},
+  ): number {
     const id = this.proximoId++;
     const persistente = opcoes.persistente ?? false;
     // Mensagem repetida não empilha: evita uma parede de toasts quando várias chamadas falham juntas.

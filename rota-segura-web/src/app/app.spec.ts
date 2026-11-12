@@ -5,7 +5,10 @@ import { routes } from './app.routes';
 
 describe('App', () => {
   it('monta a aplicação com a área de avisos', async () => {
-    await TestBed.configureTestingModule({ imports: [App], providers: [provideRouter([])] }).compileComponents();
+    await TestBed.configureTestingModule({
+      imports: [App],
+      providers: [provideRouter([])],
+    }).compileComponents();
     const fixture = TestBed.createComponent(App);
     await fixture.whenStable();
 

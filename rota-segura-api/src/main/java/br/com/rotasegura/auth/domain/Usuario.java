@@ -44,6 +44,8 @@ public class Usuario {
     @Column(name = "criado_em", nullable = false)
     private Instant criadoEm;
 
+    private String email;
+
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "usuario_escola", joinColumns = @JoinColumn(name = "usuario_id"))
     @Column(name = "escola_id")
@@ -113,6 +115,15 @@ public class Usuario {
 
     public Set<Long> getVeiculos() {
         return Set.copyOf(veiculos);
+    }
+
+    /** E-mail para relatórios agendados (só para o próprio usuário). Nunca vai para log. */
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email == null || email.isBlank() ? null : email.trim();
     }
 
     @Override

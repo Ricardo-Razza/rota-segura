@@ -8,6 +8,9 @@ spring:
 rota-segura:
   api-externa:
     base-url: http://localhost:1
+  alertas:
+    # Nos testes o ciclo de 30 s só roda quando o teste chama executar().
+    avaliacao-habilitada: false
   responsaveis:
     # Nos testes o índice é montado só quando o teste pede (sem tarefa agendada chamando a API).
     indice-habilitado: false

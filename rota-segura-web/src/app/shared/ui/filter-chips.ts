@@ -77,7 +77,9 @@ export class FilterChips {
   protected alternar(valor: string): void {
     const atuais = this.selecionados();
     if (this.multiplo()) {
-      this.selecionados.set(atuais.includes(valor) ? atuais.filter((v) => v !== valor) : [...atuais, valor]);
+      this.selecionados.set(
+        atuais.includes(valor) ? atuais.filter((v) => v !== valor) : [...atuais, valor],
+      );
     } else {
       this.selecionados.set(atuais.includes(valor) ? [] : [valor]);
     }

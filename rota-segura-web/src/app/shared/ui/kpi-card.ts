@@ -9,7 +9,11 @@ import { Tom } from './tom';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (link(); as destino) {
-      <a [class]="'kpi kpi--link kpi--' + tom()" [routerLink]="destino" queryParamsHandling="preserve">
+      <a
+        [class]="'kpi kpi--link kpi--' + tom()"
+        [routerLink]="destino"
+        queryParamsHandling="preserve"
+      >
         <span class="rotulo">{{ rotulo() }}</span>
         <span class="valor" [attr.aria-busy]="carregando()">{{ exibido() }}</span>
         @if (detalhe()) {

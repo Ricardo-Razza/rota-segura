@@ -1,3 +1,7 @@
+server:
+  # Atrás do nginx (docker-compose) use "native" para auditoria e rate limit verem o IP real.
+  forward-headers-strategy: ${ROTA_FORWARD_HEADERS:none}
+
 spring:
   application:
     name: rota-segura-api
@@ -48,6 +52,26 @@ rota-segura:
   dispositivos:
     # Sem leitura há mais que isso, o leitor aparece como OFFLINE.
     limite-offline: 30m
+  veiculos:
+    # A API não informa capacidade. Lugares por id de veículo; sem valor, a ocupação fica "desconhecida".
+    # Ex.: capacidade: { "7": 44, "8": 30 }
+    capacidade: {}
+    # Dias letivos anteriores usados para estimar "esperados" e tempo de trajeto de cada veículo.
+    dias-historico: 10
+    # Mesma regra para o card do veículo e para o alerta de lotação.
+    limite-atencao: 90
+    limite-critico: 100
+  alertas:
+    avaliacao-habilitada: ${ROTA_ALERTAS_HABILITADOS:true}
+    intervalo: 30s
+    # Janelas em que leitor sem leitura gera alerta (HH:mm-HH:mm).
+    horarios-de-rota: ["05:30-08:30", "11:00-13:30", "17:00-19:00"]
+  dashboard:
+    # A API não informa a etapa. Mapeie etapa → anos escolares (texto de escola_turma_turma_descricao).
+    # Ex.: etapas: { INFANTIL: ["Pré I", "Pré II"], FUNDAMENTAL: ["1º ano", "2º ano", "3º ano"] }
+    etapas: {}
+  tempo-real:
+    heartbeat: 15s
   responsaveis:
     # Índice aluno → responsáveis: a API só traz o vínculo na busca de cada responsável por id,
     # então o índice é montado em segundo plano.
@@ -101,4 +125,22 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        # metrics exige perfil ADMIN (SecurityConfig).
+        include: health,info,metrics
+  endpoint:
+    health:
+      # Público: só o status. Detalhes (banco, API externa por recurso) só para ADMIN.
+      show-details: when-authorized
+      roles: ADMIN
+      probes:
+        enabled: true
+      status:
+        order: DOWN,OUT_OF_SERVICE,DEGRADADO,UNKNOWN,UP
+        http-mapping:
+          DEGRADADO: 200
+  health:
+    # A API externa fora do ar não deve derrubar o liveness (o painel segue servindo o último valor bom).
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true

@@ -34,7 +34,11 @@ export const erroInterceptor: HttpInterceptorFn = (req, next) => {
   const toasts = inject(ToastService);
   return next(req).pipe(
     catchError((erro: unknown) => {
-      if (erro instanceof HttpErrorResponse && erro.status !== 401 && !req.context.get(SEM_TOAST_DE_ERRO)) {
+      if (
+        erro instanceof HttpErrorResponse &&
+        erro.status !== 401 &&
+        !req.context.get(SEM_TOAST_DE_ERRO)
+      ) {
         toasts.erro(mensagemDeErro(erro));
       }
       return throwError(() => erro);

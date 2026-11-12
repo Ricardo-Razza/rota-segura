@@ -23,7 +23,11 @@ export class ParserSse {
       const linha = this.resto.slice(0, quebra);
       const tamanhoDaQuebra = this.resto.startsWith('\r\n', quebra) ? 2 : 1;
       // Um "\r" no fim do pedaço pode ser metade de um "\r\n": espera o próximo pedaço.
-      if (tamanhoDaQuebra === 1 && this.resto[quebra] === '\r' && quebra === this.resto.length - 1) {
+      if (
+        tamanhoDaQuebra === 1 &&
+        this.resto[quebra] === '\r' &&
+        quebra === this.resto.length - 1
+      ) {
         break;
       }
       this.resto = this.resto.slice(quebra + tamanhoDaQuebra);
@@ -37,7 +41,9 @@ export class ParserSse {
 
   private processarLinha(linha: string): EventoSse | null {
     if (linha === '') {
-      const evento = this.dados.length ? { tipo: this.tipo, dados: this.dados.join('\n'), id: this.id } : null;
+      const evento = this.dados.length
+        ? { tipo: this.tipo, dados: this.dados.join('\n'), id: this.id }
+        : null;
       this.tipo = 'message';
       this.dados = [];
       return evento;

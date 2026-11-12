@@ -62,6 +62,41 @@ public class AlunosService {
         return new ListaDeAlunos(anoLetivo, resultado, base.desatualizado(), base.incompleto());
     }
 
+    /**
+     * Opções dos filtros globais (escola, ano escolar, turma) a partir das matrículas do ano, já no escopo.
+     * Só nomes de escola e turma: nenhum dado de aluno.
+     */
+    public OpcoesDeFiltro opcoesDeFiltro(Integer anoLetivo) {
+        Escopo atual = escopo.atual();
+        LocalDate hoje = jornadas.hoje();
+        int ano = anoLetivo == null ? hoje.getYear() : anoLetivo;
+        Base base = jornadas.carregarBase();
+        List<AlunoResumo> noEscopo = atual.filtrar(catalogo.doAno(base, ano), AlunoResumo::escolaId,
+                AlunoResumo::veiculoId);
+        java.text.Collator collator = java.text.Collator.getInstance(Locale.forLanguageTag("pt-BR"));
+        Map<Long, String> escolas = new HashMap<>();
+        Map<Long, OpcaoTurma> turmas = new HashMap<>();
+        java.util.Set<String> anos = new java.util.TreeSet<>(collator);
+        for (AlunoResumo a : noEscopo) {
+            if (a.escolaId() != null) {
+                escolas.putIfAbsent(a.escolaId(), a.escolaNome() == null ? "Escola #" + a.escolaId() : a.escolaNome());
+            }
+            if (a.anoEscolar() != null && !a.anoEscolar().isBlank()) {
+                anos.add(a.anoEscolar());
+            }
+            if (a.turmaId() != null) {
+                turmas.putIfAbsent(a.turmaId(), new OpcaoTurma(a.turmaId(),
+                        a.turma() == null ? "Turma #" + a.turmaId() : a.turma(), a.escolaId(), a.anoEscolar()));
+            }
+        }
+        List<OpcaoEscola> listaEscolas = escolas.entrySet().stream()
+                .map(e -> new OpcaoEscola(e.getKey(), e.getValue()))
+                .sorted(java.util.Comparator.comparing(OpcaoEscola::nome, collator)).toList();
+        List<OpcaoTurma> listaTurmas = turmas.values().stream()
+                .sorted(java.util.Comparator.comparing(OpcaoTurma::nome, collator)).toList();
+        return new OpcoesDeFiltro(ano, listaEscolas, List.copyOf(anos), listaTurmas, base.desatualizado());
+    }
+
     static String normalizar(String texto) {
         if (texto == null) {
             return "";
@@ -72,6 +107,16 @@ public class AlunosService {
 
     /** @param estadoHoje nulo quando a lista é de outro ano letivo */
     public record AlunoComSituacao(AlunoResumo aluno, EstadoJornada estadoHoje) {
+    }
+
+    public record OpcaoEscola(long id, String nome) {
+    }
+
+    public record OpcaoTurma(long id, String nome, Long escolaId, String anoEscolar) {
+    }
+
+    public record OpcoesDeFiltro(int anoLetivo, List<OpcaoEscola> escolas, List<String> anosEscolares,
+                                 List<OpcaoTurma> turmas, boolean desatualizado) {
     }
 
     public record ListaDeAlunos(int anoLetivo, Pagina<AlunoComSituacao> alunos, boolean desatualizado,

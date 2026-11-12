@@ -107,6 +107,15 @@ class PainelEndpointsTest {
     }
 
     @Test
+    void opcoesDeFiltroSoTrazemEscolasDoEscopoESemDadoDeAluno() throws Exception {
+        mvc.perform(get("/api/v1/cadastro/opcoes-filtro").with(diretorDa(50)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.escolas[*].id", contains(50)))
+                .andExpect(jsonPath("$.turmas.length()").value(1))
+                .andExpect(jsonPath("$.alunos").doesNotExist());
+    }
+
+    @Test
     void monitorSoVeOVeiculoDoEscopo() throws Exception {
         mvc.perform(get("/api/v1/jornadas").param("data", DIA).with(monitorDo(8)))
                 .andExpect(status().isOk())

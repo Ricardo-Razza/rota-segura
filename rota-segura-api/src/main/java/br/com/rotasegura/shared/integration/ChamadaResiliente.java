@@ -8,6 +8,8 @@ import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryRegistry;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import java.time.Clock;
 import java.util.EnumMap;
 import java.util.Map;
@@ -30,11 +32,13 @@ public class ChamadaResiliente {
     private final CircuitBreakerRegistry circuitBreakers;
     private final RetryRegistry retries;
     private final Clock clock;
+    private final MeterRegistry metricas;
     private final Map<Recurso, Cache<String, ResultadoCache<?>>> recentes = new EnumMap<>(Recurso.class);
     private final Cache<String, ResultadoCache<?>> ultimosValores;
 
     public ChamadaResiliente(CircuitBreakerRegistry circuitBreakers, RetryRegistry retries,
-                             CacheProperties cache, Clock clock) {
+                             CacheProperties cache, Clock clock, MeterRegistry metricas) {
+        this.metricas = metricas;
         this.circuitBreakers = circuitBreakers;
         this.retries = retries;
         this.clock = clock;
@@ -52,7 +56,22 @@ public class ChamadaResiliente {
     public <T> T protegida(Recurso recurso, Supplier<T> chamada) {
         CircuitBreaker circuitBreaker = circuitBreakers.circuitBreaker(recurso.nome());
         Retry retry = retries.retry(recurso.nome());
-        return circuitBreaker.executeSupplier(Retry.decorateSupplier(retry, chamada));
+        Timer.Sample inicio = Timer.start(metricas);
+        String resultado = "erro";
+        try {
+            T valor = circuitBreaker.executeSupplier(Retry.decorateSupplier(retry, chamada));
+            resultado = "sucesso";
+            return valor;
+        } catch (CallNotPermittedException e) {
+            resultado = "circuito-aberto";
+            throw e;
+        } finally {
+            inicio.stop(Timer.builder("rota.api_externa.chamadas")
+                    .description("Latência das chamadas GET à API externa, com retry")
+                    .tag("recurso", recurso.nome())
+                    .tag("resultado", resultado)
+                    .register(metricas));
+        }
     }
 
     /**

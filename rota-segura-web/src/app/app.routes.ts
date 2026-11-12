@@ -11,7 +11,15 @@ export const routes: Routes = [
     // Vitrine dos componentes: não usa dados nem API, por isso fica fora da área autenticada.
     path: 'design-system',
     title: 'Design system · Rota Segura',
-    loadComponent: () => import('./features/design-system/design-system').then((m) => m.DesignSystem),
+    loadComponent: () =>
+      import('./features/design-system/design-system').then((m) => m.DesignSystem),
+  },
+  {
+    // Modo TV: fora do shell (sem menu), mas autenticado.
+    path: 'operacao',
+    title: 'Modo operação · Rota Segura',
+    canActivate: [autenticadoGuard],
+    loadComponent: () => import('./features/operacao/operacao').then((m) => m.Operacao),
   },
   {
     path: '',

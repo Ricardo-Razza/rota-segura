@@ -1,4 +1,9 @@
 import { Routes } from '@angular/router';
-import { rotasProvisorias } from '../../shared/pagina-base/pagina-base';
 
-export default rotasProvisorias('Dashboard', 'Fase 4') satisfies Routes;
+export default [
+  {
+    path: '',
+    title: 'Dashboard · Rota Segura',
+    loadComponent: () => import('./dashboard').then((m) => m.Dashboard),
+  },
+] satisfies Routes;

@@ -18,6 +18,8 @@ export const autenticadoGuard: CanActivateFn = () => {
 export function perfilGuard(...perfis: Perfil[]): CanActivateFn {
   return () => {
     const usuario = inject(AuthService).usuario();
-    return usuario && perfis.includes(usuario.perfil) ? true : inject(Router).createUrlTree(['/dashboard']);
+    return usuario && perfis.includes(usuario.perfil)
+      ? true
+      : inject(Router).createUrlTree(['/dashboard']);
   };
 }

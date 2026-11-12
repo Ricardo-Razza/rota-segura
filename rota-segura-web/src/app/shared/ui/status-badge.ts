@@ -5,7 +5,9 @@ import { Tom } from './tom';
 @Component({
   selector: 'rs-status-badge',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `<span [class]="'badge badge--' + tom()"><span class="ponto" aria-hidden="true"></span>{{ texto() }}</span>`,
+  template: `<span [class]="'badge badge--' + tom()"
+    ><span class="ponto" aria-hidden="true"></span>{{ texto() }}</span
+  >`,
   styles: `
     .badge {
       display: inline-flex;

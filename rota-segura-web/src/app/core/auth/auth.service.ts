@@ -5,7 +5,10 @@ import { API, RespostaToken, Usuario } from './auth.models';
 import { SEM_TOAST_DE_ERRO } from './erro.interceptor';
 
 /** Login e refresh mostram o próprio erro (ou nenhum): sem toast automático. */
-const SILENCIOSO = { withCredentials: true, context: new HttpContext().set(SEM_TOAST_DE_ERRO, true) };
+const SILENCIOSO = {
+  withCredentials: true,
+  context: new HttpContext().set(SEM_TOAST_DE_ERRO, true),
+};
 
 /**
  * Sessão do painel. O token de acesso fica só em memória (nunca em localStorage);

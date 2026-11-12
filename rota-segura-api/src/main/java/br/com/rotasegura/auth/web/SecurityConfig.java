@@ -54,6 +54,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(regras -> regras
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(ROTAS_PUBLICAS).permitAll()
+                        .requestMatchers("/actuator/metrics", "/actuator/metrics/**", "/actuator/info").hasRole("ADMIN")
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth -> oauth
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(conversorDePerfil()))

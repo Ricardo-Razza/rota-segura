@@ -43,7 +43,10 @@ describe('Login', () => {
 
   it('mostra a mensagem do servidor quando o login falha e libera o botão', () => {
     auth.login.mockReturnValue(
-      throwError(() => new HttpErrorResponse({ status: 401, error: { detail: 'Login ou senha inválidos.' } })),
+      throwError(
+        () =>
+          new HttpErrorResponse({ status: 401, error: { detail: 'Login ou senha inválidos.' } }),
+      ),
     );
     const { el, enviar } = montar();
 

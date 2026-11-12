@@ -22,12 +22,18 @@ interface Ordenacao {
     <div class="rolagem" tabindex="0" role="region" [attr.aria-label]="legenda()">
       <table>
         <caption class="rs-somente-leitor">
-          {{ legenda() }}
+          {{
+            legenda()
+          }}
         </caption>
         <thead>
           <tr>
             @for (coluna of colunas(); track coluna.chave) {
-              <th scope="col" [class.direita]="coluna.alinhar === 'direita'" [attr.aria-sort]="ariaSort(coluna)">
+              <th
+                scope="col"
+                [class.direita]="coluna.alinhar === 'direita'"
+                [attr.aria-sort]="ariaSort(coluna)"
+              >
                 @if (coluna.ordenavel !== false) {
                   <button type="button" (click)="ordenarPor(coluna.chave)">
                     {{ coluna.titulo }}
@@ -44,7 +50,9 @@ interface Ordenacao {
           @for (linha of ordenadas(); track $index) {
             <tr>
               @for (coluna of colunas(); track coluna.chave) {
-                <td [class.direita]="coluna.alinhar === 'direita'">{{ exibir(coluna.valor(linha)) }}</td>
+                <td [class.direita]="coluna.alinhar === 'direita'">
+                  {{ exibir(coluna.valor(linha)) }}
+                </td>
               }
             </tr>
           } @empty {

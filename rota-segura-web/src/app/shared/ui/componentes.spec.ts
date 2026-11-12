@@ -28,7 +28,9 @@ describe('KpiCard', () => {
   });
 
   it('sem dado mostra travessão, nunca zero', () => {
-    expect(criar({ rotulo: 'Frequência', valor: null }).querySelector('.valor')?.textContent).toBe('—');
+    expect(criar({ rotulo: 'Frequência', valor: null }).querySelector('.valor')?.textContent).toBe(
+      '—',
+    );
   });
 
   it('com link vira um atalho navegável', () => {
@@ -52,8 +54,16 @@ describe('StatusBadge', () => {
     fixture.componentRef.setInput('tom', JORNADA.DIVERGENTE.tom);
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector('.badge--critico')?.textContent).toContain('Divergente');
-    expect(Object.keys(JORNADA)).toEqual(['AGUARDANDO', 'EMBARCADO', 'NA_ESCOLA', 'AUSENTE', 'DIVERGENTE']);
+    expect(fixture.nativeElement.querySelector('.badge--critico')?.textContent).toContain(
+      'Divergente',
+    );
+    expect(Object.keys(JORNADA)).toEqual([
+      'AGUARDANDO',
+      'EMBARCADO',
+      'NA_ESCOLA',
+      'AUSENTE',
+      'DIVERGENTE',
+    ]);
   });
 });
 
@@ -101,10 +111,26 @@ describe('DateRangePicker', () => {
   const quarta = new Date(2026, 10, 11, 15, 30); // 11/11/2026
 
   it('calcula os atalhos contando o dia de hoje', () => {
-    expect(periodoDoPreset('hoje', quarta)).toEqual({ preset: 'hoje', inicio: '2026-11-11', fim: '2026-11-11' });
-    expect(periodoDoPreset('7dias', quarta)).toEqual({ preset: '7dias', inicio: '2026-11-05', fim: '2026-11-11' });
-    expect(periodoDoPreset('30dias', quarta)).toEqual({ preset: '30dias', inicio: '2026-10-13', fim: '2026-11-11' });
-    expect(periodoDoPreset('mes', quarta)).toEqual({ preset: 'mes', inicio: '2026-11-01', fim: '2026-11-11' });
+    expect(periodoDoPreset('hoje', quarta)).toEqual({
+      preset: 'hoje',
+      inicio: '2026-11-11',
+      fim: '2026-11-11',
+    });
+    expect(periodoDoPreset('7dias', quarta)).toEqual({
+      preset: '7dias',
+      inicio: '2026-11-05',
+      fim: '2026-11-11',
+    });
+    expect(periodoDoPreset('30dias', quarta)).toEqual({
+      preset: '30dias',
+      inicio: '2026-10-13',
+      fim: '2026-11-11',
+    });
+    expect(periodoDoPreset('mes', quarta)).toEqual({
+      preset: 'mes',
+      inicio: '2026-11-01',
+      fim: '2026-11-11',
+    });
   });
 
   it('atravessa a virada de mês e de ano', () => {
@@ -120,7 +146,9 @@ describe('DateRangePicker', () => {
     expect(fixture.componentInstance.periodo().preset).toBe('7dias');
     expect(ativo()).toBe('7 dias');
 
-    [...el.querySelectorAll<HTMLButtonElement>('.atalho')].find((b) => b.textContent?.includes('Hoje'))!.click();
+    [...el.querySelectorAll<HTMLButtonElement>('.atalho')]
+      .find((b) => b.textContent?.includes('Hoje'))!
+      .click();
     fixture.detectChanges();
 
     expect(fixture.componentInstance.periodo().preset).toBe('hoje');
@@ -137,7 +165,11 @@ describe('DateRangePicker', () => {
     inicio.value = '2026-01-10';
     inicio.dispatchEvent(new Event('change'));
     fixture.detectChanges();
-    expect(fixture.componentInstance.periodo()).toEqual({ preset: 'personalizado', inicio: '2026-01-10', fim: fimOriginal });
+    expect(fixture.componentInstance.periodo()).toEqual({
+      preset: 'personalizado',
+      inicio: '2026-01-10',
+      fim: fimOriginal,
+    });
 
     fim.value = '2025-12-31';
     fim.dispatchEvent(new Event('change'));
@@ -164,7 +196,8 @@ describe('DataTable', () => {
     fixture.componentRef.setInput('legenda', 'Frequência por escola');
     fixture.detectChanges();
     const el: HTMLElement = fixture.nativeElement;
-    const primeiraColuna = () => [...el.querySelectorAll('tbody tr')].map((tr) => tr.querySelector('td')?.textContent);
+    const primeiraColuna = () =>
+      [...el.querySelectorAll('tbody tr')].map((tr) => tr.querySelector('td')?.textContent?.trim());
     const clicar = (indice: number) => {
       el.querySelectorAll<HTMLButtonElement>('th button')[indice].click();
       fixture.detectChanges();
@@ -200,7 +233,9 @@ describe('DataTable', () => {
     expect(primeiraColuna()).toEqual(['Escola B', 'Escola A', 'Escola C']);
     clicar(1);
     expect(primeiraColuna()).toEqual(['Escola A', 'Escola B', 'Escola C']);
-    expect(el.querySelectorAll('tbody tr')[2].querySelectorAll('td')[1].textContent).toBe('—');
+    expect(el.querySelectorAll('tbody tr')[2].querySelectorAll('td')[1].textContent?.trim()).toBe(
+      '—',
+    );
   });
 
   it('sem linhas mostra o estado vazio e tem legenda para leitor de tela', () => {

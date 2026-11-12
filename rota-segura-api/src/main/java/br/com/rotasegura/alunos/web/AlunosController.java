@@ -88,4 +88,10 @@ public class AlunosController {
                           @RequestParam(required = false) Integer tamanho) {
         return pendencias.listar(filtro, tipo, pagina, tamanho);
     }
+
+    @GetMapping("/cadastro/opcoes-filtro")
+    @Operation(summary = "Escolas, anos escolares e turmas do ano letivo, no escopo do usuário (para os filtros globais).")
+    AlunosService.OpcoesDeFiltro opcoesDeFiltro(@RequestParam(required = false) Integer anoLetivo) {
+        return alunos.opcoesDeFiltro(anoLetivo);
+    }
 }

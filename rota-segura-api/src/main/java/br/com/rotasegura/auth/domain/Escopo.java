@@ -16,6 +16,11 @@ public record Escopo(Long usuarioId, Perfil perfil, Set<Long> escolas, Set<Long>
         veiculos = veiculos == null ? Set.of() : Set.copyOf(veiculos);
     }
 
+    /** Escopo das tarefas em segundo plano (avaliação de alertas, tempo real): vê tudo, sem usuário. */
+    public static Escopo sistema() {
+        return new Escopo(null, Perfil.ADMIN, Set.of(), Set.of());
+    }
+
     public boolean podeVerEscola(Long escolaId) {
         if (perfil.escopoGlobal()) {
             return true;

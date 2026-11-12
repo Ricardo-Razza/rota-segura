@@ -23,7 +23,10 @@ function iso(data: Date): string {
 }
 
 /** Datas de um atalho de período, contando o dia de hoje (7 dias = hoje e os 6 anteriores). */
-export function periodoDoPreset(preset: Exclude<PresetPeriodo, 'personalizado'>, hoje = new Date()): Periodo {
+export function periodoDoPreset(
+  preset: Exclude<PresetPeriodo, 'personalizado'>,
+  hoje = new Date(),
+): Periodo {
   const fim = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
   const inicio = new Date(fim);
   if (preset === '7dias') {
@@ -61,12 +64,24 @@ export function periodoDoPreset(preset: Exclude<PresetPeriodo, 'personalizado'>,
       </div>
       <label>
         <span class="rs-somente-leitor">Data inicial</span>
-        <input class="rs-campo" type="date" [value]="periodo().inicio" [max]="periodo().fim" (change)="mudarInicio($event)" />
+        <input
+          class="rs-campo"
+          type="date"
+          [value]="periodo().inicio"
+          [max]="periodo().fim"
+          (change)="mudarInicio($event)"
+        />
       </label>
       <span aria-hidden="true">até</span>
       <label>
         <span class="rs-somente-leitor">Data final</span>
-        <input class="rs-campo" type="date" [value]="periodo().fim" [min]="periodo().inicio" (change)="mudarFim($event)" />
+        <input
+          class="rs-campo"
+          type="date"
+          [value]="periodo().fim"
+          [min]="periodo().inicio"
+          (change)="mudarFim($event)"
+        />
       </label>
       @if (erro()) {
         <span class="erro" role="alert">{{ erro() }}</span>

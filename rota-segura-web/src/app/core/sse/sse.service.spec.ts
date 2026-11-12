@@ -42,14 +42,18 @@ describe('SseService', () => {
     const stream = streamFalso();
     fetchFalso.mockResolvedValue(stream.resposta);
     const recebidos: unknown[] = [];
-    servico.de<{ alunoId: number }>('jornada.atualizada').subscribe((dados) => recebidos.push(dados));
+    servico
+      .de<{ alunoId: number }>('jornada.atualizada')
+      .subscribe((dados) => recebidos.push(dados));
 
     servico.conectar();
     await vi.advanceTimersByTimeAsync(0);
 
     const [url, opcoes] = fetchFalso.mock.calls[0] as [string, RequestInit];
     expect(url).toBe('/api/v1/stream');
-    expect((opcoes.headers as Record<string, string>)['Authorization']).toBe('Bearer token-de-teste');
+    expect((opcoes.headers as Record<string, string>)['Authorization']).toBe(
+      'Bearer token-de-teste',
+    );
     expect(servico.estado()).toBe('online');
 
     stream.enviar('event: jornada.atualizada\nid: 5\ndata: {"alunoId":42}\n\n');

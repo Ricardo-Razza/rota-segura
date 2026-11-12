@@ -11,7 +11,10 @@ import { AuthService } from './auth.service';
 import { erroInterceptor } from './erro.interceptor';
 
 /** Usuário e tokens fictícios. */
-function resposta(token: string, perfil: RespostaToken['usuario']['perfil'] = 'GESTAO'): RespostaToken {
+function resposta(
+  token: string,
+  perfil: RespostaToken['usuario']['perfil'] = 'GESTAO',
+): RespostaToken {
   return {
     accessToken: token,
     expiraEmSegundos: 900,
@@ -75,8 +78,12 @@ describe('autenticação no frontend', () => {
     http.get('/api/v1/alunos').subscribe();
     http.get('/outro-lugar/dados').subscribe();
 
-    expect(backend.expectOne('/api/v1/alunos').request.headers.get('Authorization')).toBe('Bearer token-1');
-    expect(backend.expectOne('/outro-lugar/dados').request.headers.has('Authorization')).toBe(false);
+    expect(backend.expectOne('/api/v1/alunos').request.headers.get('Authorization')).toBe(
+      'Bearer token-1',
+    );
+    expect(backend.expectOne('/outro-lugar/dados').request.headers.has('Authorization')).toBe(
+      false,
+    );
   });
 
   it('em 401 renova a sessão uma vez e repete a chamada com o token novo', () => {
@@ -114,7 +121,9 @@ describe('autenticação no frontend', () => {
     http.get('/api/v1/alertas').subscribe({ error: () => (falhou = true) });
 
     backend.expectOne('/api/v1/alertas').flush(null, { status: 401, statusText: 'Unauthorized' });
-    backend.expectOne('/api/v1/auth/refresh').flush(null, { status: 401, statusText: 'Unauthorized' });
+    backend
+      .expectOne('/api/v1/auth/refresh')
+      .flush(null, { status: 401, statusText: 'Unauthorized' });
 
     expect(falhou).toBe(true);
     expect(auth.autenticado()).toBe(false);
@@ -127,7 +136,10 @@ describe('autenticação no frontend', () => {
 
     backend
       .expectOne('/api/v1/veiculos')
-      .flush({ title: 'Fonte de dados indisponível', detail: 'A fonte de dados está indisponível.' }, { status: 503, statusText: 'x' });
+      .flush(
+        { title: 'Fonte de dados indisponível', detail: 'A fonte de dados está indisponível.' },
+        { status: 503, statusText: 'x' },
+      );
 
     expect(toasts.toasts().map((t) => t.mensagem)).toEqual(['A fonte de dados está indisponível.']);
     expect(toasts.toasts()[0].tom).toBe('critico');
@@ -139,7 +151,9 @@ describe('autenticação no frontend', () => {
     http.get('/api/v1/y').subscribe({ error: () => undefined });
     backend.expectOne('/api/v1/y').flush(null, { status: 403, statusText: 'x' });
     auth.login('usuario.teste', 'errada').subscribe({ error: () => undefined });
-    backend.expectOne('/api/v1/auth/login').flush({ detail: 'Login ou senha inválidos.' }, { status: 401, statusText: 'x' });
+    backend
+      .expectOne('/api/v1/auth/login')
+      .flush({ detail: 'Login ou senha inválidos.' }, { status: 401, statusText: 'x' });
 
     expect(toasts.toasts().map((t) => t.mensagem)).toEqual([
       'Sem conexão com o servidor. Verifique sua rede e tente de novo.',
@@ -157,7 +171,9 @@ describe('autenticação no frontend', () => {
   });
 
   it('guarda de rota restaura a sessão pelo refresh ou manda para o login', async () => {
-    const semSessao = TestBed.runInInjectionContext(() => autenticadoGuard({} as never, {} as never));
+    const semSessao = TestBed.runInInjectionContext(() =>
+      autenticadoGuard({} as never, {} as never),
+    );
     expect(isObservable(semSessao)).toBe(true);
     const pendente = firstValueFrom(semSessao as never);
     backend.expectOne('/api/v1/auth/refresh').flush(null, { status: 401, statusText: 'x' });
@@ -169,13 +185,19 @@ describe('autenticação no frontend', () => {
     backend.expectOne('/api/v1/auth/refresh').flush(resposta('token-3'));
     expect(await comCookie).toBe(true);
 
-    expect(TestBed.runInInjectionContext(() => autenticadoGuard({} as never, {} as never))).toBe(true);
+    expect(TestBed.runInInjectionContext(() => autenticadoGuard({} as never, {} as never))).toBe(
+      true,
+    );
   });
 
   it('guarda de perfil só deixa passar os perfis autorizados', () => {
     entrar();
-    const gestao = TestBed.runInInjectionContext(() => perfilGuard('GESTAO', 'SECRETARIA')({} as never, {} as never));
-    const admin = TestBed.runInInjectionContext(() => perfilGuard('ADMIN')({} as never, {} as never));
+    const gestao = TestBed.runInInjectionContext(() =>
+      perfilGuard('GESTAO', 'SECRETARIA')({} as never, {} as never),
+    );
+    const admin = TestBed.runInInjectionContext(() =>
+      perfilGuard('ADMIN')({} as never, {} as never),
+    );
 
     expect(gestao).toBe(true);
     expect((admin as UrlTree).toString()).toBe('/dashboard');

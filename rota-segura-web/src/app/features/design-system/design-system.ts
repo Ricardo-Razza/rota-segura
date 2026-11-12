@@ -34,7 +34,13 @@ interface LinhaDemo {
 
       <h2>kpi-card</h2>
       <div class="grade grade--kpi">
-        <rs-kpi-card rotulo="Alunos ativos" [valor]="1284" tom="info" detalhe="Exemplo com link" link="/design-system" />
+        <rs-kpi-card
+          rotulo="Alunos ativos"
+          [valor]="1284"
+          tom="info"
+          detalhe="Exemplo com link"
+          link="/design-system"
+        />
         <rs-kpi-card rotulo="Frequência de hoje" valor="91,4%" tom="sucesso" />
         <rs-kpi-card rotulo="Alertas abertos" [valor]="3" tom="critico" />
         <rs-kpi-card rotulo="Sem dado" [valor]="null" />
@@ -42,7 +48,11 @@ interface LinhaDemo {
       </div>
 
       <h2>chart-card — quatro estados</h2>
-      <rs-filter-chips rotulo="Estado do card" [opcoes]="estados" [(selecionados)]="estadoEscolhido" />
+      <rs-filter-chips
+        rotulo="Estado do card"
+        [opcoes]="estados"
+        [(selecionados)]="estadoEscolhido"
+      />
       <div class="grade grade--cards">
         <rs-chart-card
           titulo="Frequência por escola"
@@ -51,7 +61,10 @@ interface LinhaDemo {
           [tempoLimiteMs]="6000"
           (tentarDeNovo)="toasts.mostrar('Tentando de novo…')"
         >
-          <rs-grafico [opcoes]="barras" descricao="Frequência por escola, com linha de média de 81%" />
+          <rs-grafico
+            [opcoes]="barras"
+            descricao="Frequência por escola, com linha de média de 81%"
+          />
         </rs-chart-card>
         <rs-chart-card titulo="Jornada de hoje" estado="ok">
           <rs-grafico [opcoes]="donut" descricao="Distribuição dos alunos por estado da jornada" />
@@ -67,15 +80,33 @@ interface LinhaDemo {
 
       <h2>date-range-picker</h2>
       <rs-date-range-picker [(periodo)]="periodo" />
-      <p class="nota">Selecionado: {{ periodo().inicio }} a {{ periodo().fim }} ({{ periodo().preset }})</p>
+      <p class="nota">
+        Selecionado: {{ periodo().inicio }} a {{ periodo().fim }} ({{ periodo().preset }})
+      </p>
 
       <h2>data-table</h2>
-      <rs-data-table [colunas]="colunas" [linhas]="linhas" legenda="Frequência por escola (exemplo)" />
+      <rs-data-table
+        [colunas]="colunas"
+        [linhas]="linhas"
+        legenda="Frequência por escola (exemplo)"
+      />
 
       <h2>toasts</h2>
       <div class="linha">
-        <button type="button" class="rs-botao" (click)="toasts.mostrar('Sincronização concluída.', 'sucesso')">Sucesso</button>
-        <button type="button" class="rs-botao" (click)="toasts.erro('A fonte de dados está indisponível.')">Erro</button>
+        <button
+          type="button"
+          class="rs-botao"
+          (click)="toasts.mostrar('Sincronização concluída.', 'sucesso')"
+        >
+          Sucesso
+        </button>
+        <button
+          type="button"
+          class="rs-botao"
+          (click)="toasts.erro('A fonte de dados está indisponível.')"
+        >
+          Erro
+        </button>
         <button
           type="button"
           class="rs-botao"
@@ -144,7 +175,9 @@ export class DesignSystem {
   protected readonly atualizadoEm = new Date(2026, 0, 15, 7, 42);
 
   protected readonly periodo = signal<Periodo>(periodoDoPreset('7dias'));
-  protected readonly jornada = (Object.keys(JORNADA) as EstadoJornada[]).map((estado) => JORNADA[estado]);
+  protected readonly jornada = (Object.keys(JORNADA) as EstadoJornada[]).map(
+    (estado) => JORNADA[estado],
+  );
 
   protected readonly linhas: LinhaDemo[] = [
     { escola: 'Escola Municipal Exemplo do Vale Verde', alunos: 412, frequencia: 93.1 },
@@ -164,7 +197,10 @@ export class DesignSystem {
   protected readonly barras: Record<string, unknown> = {
     grid: { left: 8, right: 56, top: 24, bottom: 8, containLabel: true },
     tooltip: { trigger: 'axis' },
-    xAxis: eixoDeCategorias(this.comFrequencia.map((l) => l.escola), 16),
+    xAxis: eixoDeCategorias(
+      this.comFrequencia.map((l) => l.escola),
+      16,
+    ),
     yAxis: { type: 'value', max: 100, axisLabel: { formatter: '{value}%' } },
     series: [
       {
@@ -195,7 +231,11 @@ export class DesignSystem {
       right: 0,
       top: 'middle',
       formatter: (nome: string) =>
-        legendaComValor(nome, this.fatias.find((f) => f.name === nome)?.value ?? 0, this.totalFatias),
+        legendaComValor(
+          nome,
+          this.fatias.find((f) => f.name === nome)?.value ?? 0,
+          this.totalFatias,
+        ),
     },
     series: [
       {

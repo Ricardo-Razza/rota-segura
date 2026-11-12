@@ -1,4 +1,12 @@
-import { ChangeDetectionStrategy, Component, computed, effect, input, output, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  input,
+  output,
+  signal,
+} from '@angular/core';
 
 export type EstadoCard = 'carregando' | 'vazio' | 'erro' | 'ok' | 'desatualizado';
 
@@ -11,12 +19,17 @@ export type EstadoCard = 'carregando' | 'vazio' | 'erro' | 'ok' | 'desatualizado
   selector: 'rs-chart-card',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <section class="card" [attr.aria-busy]="efetivo() === 'carregando'" [attr.aria-labelledby]="idTitulo">
+    <section
+      class="card"
+      [attr.aria-busy]="efetivo() === 'carregando'"
+      [attr.aria-labelledby]="idTitulo"
+    >
       <header>
         <h2 [id]="idTitulo">{{ titulo() }}</h2>
         @if (efetivo() === 'desatualizado') {
           <span class="aviso" role="status">
-            Dados desatualizados@if (atualizadoEm(); as quando) {
+            Dados desatualizados
+            @if (atualizadoEm(); as quando) {
               <span> · última atualização {{ hora(quando) }}</span>
             }
           </span>
@@ -105,7 +118,12 @@ export type EstadoCard = 'carregando' | 'vazio' | 'erro' | 'ok' | 'desatualizado
       width: 100%;
       height: 140px;
       border-radius: 8px;
-      background: linear-gradient(90deg, var(--superficie-2) 25%, var(--borda) 50%, var(--superficie-2) 75%);
+      background: linear-gradient(
+        90deg,
+        var(--superficie-2) 25%,
+        var(--borda) 50%,
+        var(--superficie-2) 75%
+      );
       background-size: 200% 100%;
       animation: brilho 1.4s linear infinite;
     }

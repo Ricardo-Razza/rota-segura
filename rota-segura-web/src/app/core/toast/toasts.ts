@@ -8,9 +8,20 @@ import { ToastService } from './toast.service';
   template: `
     <div class="pilha">
       @for (toast of servico.toasts(); track toast.id) {
-        <div class="toast" [class]="'toast toast--' + toast.tom" [attr.role]="toast.tom === 'critico' ? 'alert' : 'status'">
+        <div
+          class="toast"
+          [class]="'toast toast--' + toast.tom"
+          [attr.role]="toast.tom === 'critico' ? 'alert' : 'status'"
+        >
           <span>{{ toast.mensagem }}</span>
-          <button type="button" class="fechar" (click)="servico.fechar(toast.id)" aria-label="Fechar aviso">×</button>
+          <button
+            type="button"
+            class="fechar"
+            (click)="servico.fechar(toast.id)"
+            aria-label="Fechar aviso"
+          >
+            ×
+          </button>
         </div>
       }
     </div>

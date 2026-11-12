@@ -69,7 +69,11 @@ export class FiltrosStore {
   /** Altera um ou mais filtros. Trocar a escola limpa a turma, que pertence à escola anterior. */
   definir(parcial: Partial<FiltrosGlobais>): Promise<boolean> {
     const proximo = { ...this._filtros(), ...parcial };
-    if ('escolaId' in parcial && parcial.escolaId !== this._filtros().escolaId && !('turmaId' in parcial)) {
+    if (
+      'escolaId' in parcial &&
+      parcial.escolaId !== this._filtros().escolaId &&
+      !('turmaId' in parcial)
+    ) {
       proximo.turmaId = null;
     }
     this._filtros.set(proximo);

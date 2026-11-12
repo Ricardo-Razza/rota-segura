@@ -12,16 +12,35 @@ import { mensagemDeErro } from '../../core/auth/erro.interceptor';
       <form class="cartao" (submit)="entrar($event, login.value, senha.value)" novalidate>
         <div class="rs-marca marca">
           <img src="logo.svg" alt="" width="64" height="51" />
-          <span><span class="rs-marca__rota">Rota </span><span class="rs-marca__segura">Segura</span></span>
+          <span
+            ><span class="rs-marca__rota">Rota </span
+            ><span class="rs-marca__segura">Segura</span></span
+          >
         </div>
         <p class="subtitulo">Gestão escolar · jornada do aluno</p>
         <h1>Entrar no painel</h1>
 
         <label for="login">Login</label>
-        <input #login id="login" class="rs-campo" type="text" autocomplete="username" required maxlength="120" />
+        <input
+          #login
+          id="login"
+          class="rs-campo"
+          type="text"
+          autocomplete="username"
+          required
+          maxlength="120"
+        />
 
         <label for="senha">Senha</label>
-        <input #senha id="senha" class="rs-campo" type="password" autocomplete="current-password" required maxlength="200" />
+        <input
+          #senha
+          id="senha"
+          class="rs-campo"
+          type="password"
+          autocomplete="current-password"
+          required
+          maxlength="200"
+        />
 
         @if (erro()) {
           <p class="erro" role="alert">{{ erro() }}</p>
@@ -41,8 +60,16 @@ import { mensagemDeErro } from '../../core/auth/erro.interceptor';
       padding: 16px;
       /* Halo discreto nas cores da marca, sem competir com o formulário. */
       background:
-        radial-gradient(60rem 30rem at 15% -10%, color-mix(in srgb, var(--marca) 12%, transparent), transparent 70%),
-        radial-gradient(50rem 30rem at 110% 110%, color-mix(in srgb, var(--marca-secundaria) 12%, transparent), transparent 70%),
+        radial-gradient(
+          60rem 30rem at 15% -10%,
+          color-mix(in srgb, var(--marca) 12%, transparent),
+          transparent 70%
+        ),
+        radial-gradient(
+          50rem 30rem at 110% 110%,
+          color-mix(in srgb, var(--marca-secundaria) 12%, transparent),
+          transparent 70%
+        ),
         var(--fundo);
     }
     .cartao {
@@ -112,7 +139,9 @@ export class Login {
       next: () => void this.router.navigate(['/dashboard']),
       error: (falha: unknown) => {
         this.enviando.set(false);
-        this.erro.set(falha instanceof HttpErrorResponse ? mensagemDeErro(falha) : 'Não foi possível entrar.');
+        this.erro.set(
+          falha instanceof HttpErrorResponse ? mensagemDeErro(falha) : 'Não foi possível entrar.',
+        );
       },
     });
   }

@@ -42,6 +42,19 @@ public class SaudeLeitoresService {
     public SaudeDosLeitores saude() {
         Carga carga = leiturasDaApi.carregar();
         LocalDateTime agora = jornadas.agora();
+        List<SaudeLeitor> noEscopo = escopo.filtrar(calcular(carga, agora), SaudeLeitor::escolaId,
+                SaudeLeitor::veiculoId);
+
+        Map<Situacao, Long> porSituacao = new EnumMap<>(Situacao.class);
+        for (Situacao s : Situacao.values()) {
+            porSituacao.put(s, noEscopo.stream().filter(l -> l.situacao() == s).count());
+        }
+        return new SaudeDosLeitores(agora, limiteOffline.toMinutes(), porSituacao, noEscopo,
+                carga.desatualizado(), carga.incompleto());
+    }
+
+    /** Todos os leitores, sem escopo (usado pelas regras de alerta), ordenados por escola, veículo e id. */
+    public List<SaudeLeitor> calcular(Carga carga, LocalDateTime agora) {
         LocalDateTime umaHoraAtras = agora.minusHours(1);
 
         Map<Long, LocalDateTime> ultima = new HashMap<>();
@@ -71,18 +84,15 @@ public class SaudeLeitoresService {
                     Conversoes.paraLong(dispositivo.escolaId()),
                     ultimaLeitura, naUltimaHora.getOrDefault(id, 0), situacao(ultimaLeitura, agora)));
         }
-        List<SaudeLeitor> noEscopo = escopo.filtrar(leitores, SaudeLeitor::escolaId, SaudeLeitor::veiculoId).stream()
+        return leitores.stream()
                 .sorted(Comparator.comparing(SaudeLeitor::escolaId, Comparator.nullsLast(Comparator.naturalOrder()))
                         .thenComparing(SaudeLeitor::veiculoId, Comparator.nullsLast(Comparator.naturalOrder()))
                         .thenComparingLong(SaudeLeitor::id))
                 .toList();
+    }
 
-        Map<Situacao, Long> porSituacao = new EnumMap<>(Situacao.class);
-        for (Situacao s : Situacao.values()) {
-            porSituacao.put(s, noEscopo.stream().filter(l -> l.situacao() == s).count());
-        }
-        return new SaudeDosLeitores(agora, limiteOffline.toMinutes(), porSituacao, noEscopo,
-                carga.desatualizado(), carga.incompleto());
+    public Duration limiteOffline() {
+        return limiteOffline;
     }
 
     Situacao situacao(LocalDateTime ultimaLeitura, LocalDateTime agora) {

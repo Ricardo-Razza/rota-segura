@@ -2,7 +2,9 @@ import { ParserSse } from './parser-sse';
 
 describe('ParserSse', () => {
   it('lê evento com tipo, id e dados', () => {
-    const eventos = new ParserSse().alimentar('event: jornada.atualizada\nid: 7\ndata: {"alunoId":42}\n\n');
+    const eventos = new ParserSse().alimentar(
+      'event: jornada.atualizada\nid: 7\ndata: {"alunoId":42}\n\n',
+    );
 
     expect(eventos).toEqual([{ tipo: 'jornada.atualizada', id: '7', dados: '{"alunoId":42}' }]);
   });
@@ -12,7 +14,9 @@ describe('ParserSse', () => {
 
     expect(parser.alimentar('event: alerta.cri')).toEqual([]);
     expect(parser.alimentar('ado\ndata: {"id"')).toEqual([]);
-    expect(parser.alimentar(':1}\n\n')).toEqual([{ tipo: 'alerta.criado', id: null, dados: '{"id":1}' }]);
+    expect(parser.alimentar(':1}\n\n')).toEqual([
+      { tipo: 'alerta.criado', id: null, dados: '{"id":1}' },
+    ]);
   });
 
   it('aceita CRLF, comentários e várias linhas de dados', () => {

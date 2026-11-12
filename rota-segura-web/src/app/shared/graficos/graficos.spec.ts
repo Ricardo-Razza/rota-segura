@@ -50,7 +50,12 @@ describe('tema do ECharts', () => {
       categoryAxis: { axisLabel: { color: string } };
     };
 
-    expect(tema.color.slice(0, 4)).toEqual([TOKENS.info, TOKENS.sucesso, TOKENS.atencao, TOKENS.critico]);
+    expect(tema.color.slice(0, 4)).toEqual([
+      TOKENS.info,
+      TOKENS.sucesso,
+      TOKENS.atencao,
+      TOKENS.critico,
+    ]);
     expect(tema.textStyle.color).toBe(TOKENS.texto);
     expect(tema.tooltip.backgroundColor).toBe(TOKENS.superficie);
     expect(tema.categoryAxis.axisLabel.color).toBe(TOKENS.textoSuave);

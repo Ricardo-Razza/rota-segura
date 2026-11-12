@@ -151,7 +151,11 @@ export class SseService {
     this.agora.set(Date.now());
     const ultimo = this._ultimoEventoEm();
     // Conexão "aberta" mas muda: derruba e reconecta em vez de fingir que está ao vivo.
-    if (this._estado() === 'online' && ultimo !== null && Date.now() - ultimo > LIMITE_SEM_EVENTO_MS) {
+    if (
+      this._estado() === 'online' &&
+      ultimo !== null &&
+      Date.now() - ultimo > LIMITE_SEM_EVENTO_MS
+    ) {
       this.cancelamento?.abort();
       this.agendarReconexao();
     }

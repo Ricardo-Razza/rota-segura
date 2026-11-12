@@ -1,4 +1,15 @@
 import { Routes } from '@angular/router';
-import { rotasProvisorias } from '../../shared/pagina-base/pagina-base';
 
-export default rotasProvisorias('Alunos', 'Fase 4') satisfies Routes;
+export default [
+  {
+    path: '',
+    title: 'Alunos · Rota Segura',
+    loadComponent: () => import('./alunos').then((m) => m.Alunos),
+  },
+  {
+    // Só o id na URL: o nome do aluno nunca vai para o endereço.
+    path: ':id',
+    title: 'Perfil do aluno · Rota Segura',
+    loadComponent: () => import('./perfil-aluno').then((m) => m.PerfilAluno),
+  },
+] satisfies Routes;
