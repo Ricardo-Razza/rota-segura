@@ -73,8 +73,9 @@ class JornadaServiceTest {
 
     private JornadaService servicoAs(String horaLocal) {
         Instant instante = DIA.atTime(LocalTime.parse(horaLocal)).atZone(ZONA).toInstant();
-        return new JornadaService(alunos, dispositivos, presencas, new ClassificadorDeLeitores(propriedades),
-                propriedades, Clock.fixed(instante, ZoneOffset.UTC));
+        LeiturasDaApi leituras = new LeiturasDaApi(dispositivos, presencas,
+                new ClassificadorDeLeitores(propriedades), propriedades);
+        return new JornadaService(alunos, leituras, propriedades, Clock.fixed(instante, ZoneOffset.UTC));
     }
 
     @Test

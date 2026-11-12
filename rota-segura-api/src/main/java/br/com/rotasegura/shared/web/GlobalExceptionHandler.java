@@ -1,6 +1,8 @@
 package br.com.rotasegura.shared.web;
 
 import br.com.rotasegura.shared.erro.AcessoNegadoException;
+import br.com.rotasegura.shared.erro.ConflitoException;
+import br.com.rotasegura.shared.erro.RequisicaoInvalidaException;
 import br.com.rotasegura.shared.erro.ApiExternaIndisponivelException;
 import br.com.rotasegura.shared.erro.RecursoNaoEncontradoException;
 import java.net.URI;
@@ -35,6 +37,16 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(RecursoNaoEncontradoException.class)
     ProblemDetail naoEncontrado(RecursoNaoEncontradoException e) {
         return problema(HttpStatus.NOT_FOUND, "Recurso não encontrado", e.getMessage(), "nao-encontrado");
+    }
+
+    @ExceptionHandler(RequisicaoInvalidaException.class)
+    ProblemDetail requisicaoInvalida(RequisicaoInvalidaException e) {
+        return problema(HttpStatus.BAD_REQUEST, "Requisição inválida", e.getMessage(), "requisicao-invalida");
+    }
+
+    @ExceptionHandler(ConflitoException.class)
+    ProblemDetail conflito(ConflitoException e) {
+        return problema(HttpStatus.CONFLICT, "Conflito", e.getMessage(), "conflito");
     }
 
     @ExceptionHandler(AcessoNegadoException.class)

@@ -3,16 +3,13 @@ package br.com.rotasegura.jornada.application;
 import br.com.rotasegura.alunos.integration.AlunoDto;
 import br.com.rotasegura.alunos.integration.AlunosClient;
 import br.com.rotasegura.alunos.integration.MatriculaDto;
-import br.com.rotasegura.dispositivos.integration.DispositivoFacialDto;
-import br.com.rotasegura.dispositivos.integration.DispositivosClient;
-import br.com.rotasegura.jornada.application.ClassificadorDeLeitores.Classificacao;
+import br.com.rotasegura.jornada.application.LeiturasDaApi.Carga;
 import br.com.rotasegura.jornada.application.ResumoJornadas.Descartes;
 import br.com.rotasegura.jornada.domain.JornadaDoDia;
 import br.com.rotasegura.jornada.domain.JornadaDoDia.LeiturasIgnoradas;
 import br.com.rotasegura.jornada.domain.Leitura;
 import br.com.rotasegura.jornada.domain.MotorJornada;
-import br.com.rotasegura.presenca.integration.PresencaClient;
-import br.com.rotasegura.presenca.integration.PresencaDto;
+import br.com.rotasegura.shared.application.Periodo;
 import br.com.rotasegura.shared.integration.ColecaoPaginada;
 import br.com.rotasegura.shared.integration.Conversoes;
 import br.com.rotasegura.shared.integration.ResultadoCache;
@@ -27,8 +24,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
@@ -39,55 +34,74 @@ import org.springframework.stereotype.Service;
  * e filtradas aqui.
  *
  * <p>Filtro por escola: usa a escola do leitor (chegada ou, antes dela, embarque). Alunos sem nenhuma leitura
- * não têm escola conhecida, porque a matrícula da API traz só o nome da escola, e ficam fora desse filtro.
+ * no dia não têm escola conhecida nesse dia e ficam fora desse filtro.
  */
 @Service
 public class JornadaService {
 
-    private static final Logger LOG = LoggerFactory.getLogger(JornadaService.class);
-
     private final AlunosClient alunos;
-    private final DispositivosClient dispositivos;
-    private final PresencaClient presencas;
-    private final ClassificadorDeLeitores classificador;
+    private final LeiturasDaApi leiturasDaApi;
     private final JornadaProperties propriedades;
     private final MotorJornada motor;
     private final Clock relogio;
 
-    public JornadaService(AlunosClient alunos, DispositivosClient dispositivos, PresencaClient presencas,
-                          ClassificadorDeLeitores classificador, JornadaProperties propriedades, Clock relogio) {
+    public JornadaService(AlunosClient alunos, LeiturasDaApi leiturasDaApi, JornadaProperties propriedades,
+                          Clock relogio) {
         this.alunos = alunos;
-        this.dispositivos = dispositivos;
-        this.presencas = presencas;
-        this.classificador = classificador;
+        this.leiturasDaApi = leiturasDaApi;
         this.propriedades = propriedades;
         this.motor = new MotorJornada(propriedades.regras());
         this.relogio = relogio;
     }
 
+    /** Cadastro de alunos e leituras carregados uma vez, para avaliar vários dias sem reler a API. */
+    public Base carregarBase() {
+        ResultadoCache<ColecaoPaginada<AlunoDto>> cadastro = alunos.listarTodos();
+        return new Base(cadastro.valor().itens(), leiturasDaApi.carregar(),
+                cadastro.desatualizado(), cadastro.valor().truncada());
+    }
+
     /** Jornadas do dia; {@code escolaId} nulo traz todas as escolas. */
     public ResumoJornadas doDia(LocalDate data, Long escolaId) {
+        return doDia(data, escolaId, carregarBase());
+    }
+
+    public ResumoJornadas doDia(LocalDate data, Long escolaId, Base base) {
         Objects.requireNonNull(data, "data");
         LocalDateTime agora = agora();
-        ResultadoCache<ColecaoPaginada<AlunoDto>> cadastro = alunos.listarTodos();
-        Contexto contexto = carregarContexto(data);
+        Map<Long, List<Leitura>> leiturasDoDia = new HashMap<>();
+        int tipoDesconhecido = 0;
+        int naoCadastrado = 0;
+        for (Leitura leitura : base.carga().leituras()) {
+            if (!leitura.dataHora().toLocalDate().equals(data)) {
+                continue;
+            }
+            if (!base.carga().classificacao().leitores().containsKey(leitura.leitorId())) {
+                if (base.carga().classificacao().tipoDesconhecido().contains(leitura.leitorId())) {
+                    tipoDesconhecido++;
+                } else {
+                    naoCadastrado++;
+                }
+                continue;
+            }
+            leiturasDoDia.computeIfAbsent(leitura.alunoId(), id -> new ArrayList<>()).add(leitura);
+        }
 
         Map<Long, String> turnoPorAluno = new HashMap<>();
-        for (AlunoDto aluno : cadastro.valor().itens()) {
+        for (AlunoDto aluno : base.alunos()) {
             Long id = Conversoes.paraLong(aluno.id());
-            matriculaDoAno(aluno, data.getYear()).ifPresent(m -> {
-                if (id != null) {
-                    turnoPorAluno.put(id, m.escolaTurmaTurnoDescricao());
-                }
-            });
+            if (id != null) {
+                matriculaDoAno(aluno, data.getYear()).ifPresent(m -> turnoPorAluno.put(id, m.escolaTurmaTurnoDescricao()));
+            }
         }
         // Quem teve leitura no dia entra mesmo sem matrícula no ano: a leitura prova que o aluno existe.
-        contexto.leiturasPorAluno.keySet().forEach(id -> turnoPorAluno.putIfAbsent(id, null));
+        leiturasDoDia.keySet().forEach(id -> turnoPorAluno.putIfAbsent(id, null));
 
         List<JornadaDoDia> jornadas = new ArrayList<>();
         LeiturasIgnoradas ignoradas = LeiturasIgnoradas.NENHUMA;
         for (Map.Entry<Long, String> aluno : turnoPorAluno.entrySet()) {
-            JornadaDoDia jornada = montar(aluno.getKey(), aluno.getValue(), data, agora, contexto);
+            JornadaDoDia jornada = montar(aluno.getKey(), aluno.getValue(), data, agora,
+                    leiturasDoDia.getOrDefault(aluno.getKey(), List.of()), base.carga());
             if (escolaId == null || escolaId.equals(jornada.escolaId())) {
                 jornadas.add(jornada);
                 ignoradas = ignoradas.somar(jornada.leiturasIgnoradas());
@@ -95,31 +109,48 @@ public class JornadaService {
         }
         jornadas.sort(Comparator.comparingLong(JornadaDoDia::alunoId));
 
-        return new ResumoJornadas(data, agora, jornadas,
-                contexto.descartes(ignoradas), contexto.classificacao.tipoDesconhecido(),
-                cadastro.desatualizado() || contexto.desatualizado,
-                cadastro.valor().truncada() || contexto.incompleto);
+        Descartes descartes = new Descartes(ignoradas.duplicadas(), ignoradas.foraDeOrdem(),
+                tipoDesconhecido, naoCadastrado, base.carga().semDadosValidos());
+        return new ResumoJornadas(data, agora, jornadas, descartes,
+                base.carga().classificacao().tipoDesconhecido(), base.desatualizado(), base.incompleto());
     }
 
     /** Jornada de um aluno num dia. Lança {@code RecursoNaoEncontradoException} se o aluno não existir. */
     public JornadaDoDia doAluno(long alunoId, LocalDate data) {
-        Objects.requireNonNull(data, "data");
+        return doAlunoNoPeriodo(alunoId, new Periodo(data, data)).getFirst();
+    }
+
+    /** Jornadas de um aluno em cada dia do período (sem limite aqui: quem chama valida o tamanho). */
+    public List<JornadaDoDia> doAlunoNoPeriodo(long alunoId, Periodo periodo) {
         AlunoDto aluno = alunos.buscarPorId(alunoId).valor();
-        String turno = matriculaDoAno(aluno, data.getYear()).map(MatriculaDto::escolaTurmaTurnoDescricao).orElse(null);
-        return montar(alunoId, turno, data, agora(), carregarContexto(data));
+        Carga carga = leiturasDaApi.carregar();
+        LocalDateTime agora = agora();
+        return periodo.dias().stream().map(dia -> {
+            String turno = matriculaDoAno(aluno, dia.getYear()).map(MatriculaDto::escolaTurmaTurnoDescricao).orElse(null);
+            List<Leitura> doDia = carga.leituras().stream()
+                    .filter(l -> l.alunoId() == alunoId && l.dataHora().toLocalDate().equals(dia))
+                    .filter(l -> carga.classificacao().leitores().containsKey(l.leitorId()))
+                    .toList();
+            return montar(alunoId, turno, dia, agora, doDia, carga);
+        }).toList();
     }
 
-    private JornadaDoDia montar(long alunoId, String turno, LocalDate data, LocalDateTime agora, Contexto contexto) {
-        LocalTime limite = propriedades.limiteAusenciaDoTurno(turno);
-        List<Leitura> leituras = contexto.leiturasPorAluno.getOrDefault(alunoId, List.of());
-        return motor.montar(alunoId, data, leituras, contexto.classificacao.leitores(), agora, data.atTime(limite));
-    }
-
-    private LocalDateTime agora() {
+    public LocalDateTime agora() {
         return LocalDateTime.ofInstant(relogio.instant(), propriedades.zona());
     }
 
-    private static Optional<MatriculaDto> matriculaDoAno(AlunoDto aluno, int ano) {
+    public LocalDate hoje() {
+        return agora().toLocalDate();
+    }
+
+    private JornadaDoDia montar(long alunoId, String turno, LocalDate data, LocalDateTime agora,
+                                List<Leitura> leituras, Carga carga) {
+        LocalTime limite = propriedades.limiteAusenciaDoTurno(turno);
+        return motor.montar(alunoId, data, leituras, carga.classificacao().leitores(), agora, data.atTime(limite));
+    }
+
+    /** Matrícula do aluno no ano letivo, se houver. */
+    public static Optional<MatriculaDto> matriculaDoAno(AlunoDto aluno, int ano) {
         if (aluno.matriculas() == null) {
             return Optional.empty();
         }
@@ -128,66 +159,29 @@ public class JornadaService {
                 .findFirst();
     }
 
-    /** Leitores classificados e leituras válidas do dia, agrupadas por aluno. */
-    private Contexto carregarContexto(LocalDate data) {
-        ResultadoCache<ColecaoPaginada<DispositivoFacialDto>> cadastroLeitores = dispositivos.listarTodos();
-        Classificacao classificacao = classificador.classificar(cadastroLeitores.valor().itens());
-        if (!classificacao.tipoDesconhecido().isEmpty()) {
-            // Só ids: nenhum dado pessoal em log.
-            LOG.warn("Leitores com tipo de uso não mapeado (ignorados): {}", classificacao.tipoDesconhecido());
+    /**
+     * Dados de entrada já carregados.
+     *
+     * @param desatualizadoCadastro o cadastro de alunos veio do último valor em cache
+     * @param incompletoCadastro    o cadastro de alunos parou no limite de páginas
+     */
+    public record Base(List<AlunoDto> alunosCadastro, Carga carga, boolean desatualizadoCadastro,
+                       boolean incompletoCadastro) {
+
+        public Base {
+            alunosCadastro = List.copyOf(alunosCadastro);
         }
 
-        ResultadoCache<ColecaoPaginada<PresencaDto>> registros = presencas.listarTodas();
-        Contexto contexto = new Contexto(classificacao,
-                cadastroLeitores.desatualizado() || registros.desatualizado(),
-                cadastroLeitores.valor().truncada() || registros.valor().truncada());
-
-        for (PresencaDto registro : registros.valor().itens()) {
-            Long alunoId = Conversoes.paraLong(registro.alunoId());
-            Long leitorId = Conversoes.paraLong(registro.dispositivoFacialId());
-            LocalDateTime dataHora = Conversoes.paraDataHora(registro.dataHora(), propriedades.zona());
-            if (alunoId == null || leitorId == null || dataHora == null) {
-                // Sem data legível não dá para saber o dia; conta no dia avaliado para não sumir de vista.
-                contexto.semDadosValidos++;
-                continue;
-            }
-            if (!dataHora.toLocalDate().equals(data)) {
-                continue;
-            }
-            if (!classificacao.leitores().containsKey(leitorId)) {
-                if (classificacao.tipoDesconhecido().contains(leitorId)) {
-                    contexto.tipoDeLeitorDesconhecido++;
-                } else {
-                    contexto.leitorNaoCadastrado++;
-                }
-                continue;
-            }
-            Leitura leitura = new Leitura(Conversoes.paraLong(registro.id()), alunoId, dataHora, leitorId,
-                    Conversoes.paraLong(registro.veiculoId()));
-            contexto.leiturasPorAluno.computeIfAbsent(alunoId, id -> new ArrayList<>()).add(leitura);
-        }
-        return contexto;
-    }
-
-    private static final class Contexto {
-
-        final Classificacao classificacao;
-        final boolean desatualizado;
-        final boolean incompleto;
-        final Map<Long, List<Leitura>> leiturasPorAluno = new HashMap<>();
-        int semDadosValidos;
-        int tipoDeLeitorDesconhecido;
-        int leitorNaoCadastrado;
-
-        Contexto(Classificacao classificacao, boolean desatualizado, boolean incompleto) {
-            this.classificacao = classificacao;
-            this.desatualizado = desatualizado;
-            this.incompleto = incompleto;
+        public List<AlunoDto> alunos() {
+            return alunosCadastro;
         }
 
-        Descartes descartes(LeiturasIgnoradas ignoradas) {
-            return new Descartes(ignoradas.duplicadas(), ignoradas.foraDeOrdem(),
-                    tipoDeLeitorDesconhecido, leitorNaoCadastrado, semDadosValidos);
+        public boolean desatualizado() {
+            return desatualizadoCadastro || carga.desatualizado();
+        }
+
+        public boolean incompleto() {
+            return incompletoCadastro || carga.incompleto();
         }
     }
 }

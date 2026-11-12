@@ -54,6 +54,19 @@ public class ClienteApiExterna {
         }));
     }
 
+    /**
+     * Aciona uma rota GET de operação (ex.: {@code /api/alunos/sincronizar}), sem cache e descartando o corpo:
+     * a resposta não tem formato documentado e pode conter dado pessoal.
+     *
+     * @return o status HTTP devolvido
+     */
+    public int acionar(Recurso recurso, String caminho) {
+        int status = chamada.protegida(recurso,
+                () -> restClient.get().uri(caminho).retrieve().toBodilessEntity().getStatusCode().value());
+        chamada.invalidarRecentes(recurso);
+        return status;
+    }
+
     private <T> PaginaApi<T> getPagina(String caminho, int pagina, ParameterizedTypeReference<PaginaApi<T>> tipo) {
         return restClient.get()
                 .uri(uri -> uri.path(caminho).queryParam(props.parametroPagina(), pagina).build())

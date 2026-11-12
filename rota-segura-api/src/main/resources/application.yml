@@ -41,6 +41,20 @@ rota-segura:
     tipos-leitor:
       embarque: ["1"]
       chegada: ["2"]
+  calendario:
+    # A API não expõe calendário escolar. Fim de semana já é excluído; liste aqui feriados e recessos.
+    # Ex.: ["2026-04-21", "2026-06-04"]
+    dias-sem-aula: []
+  dispositivos:
+    # Sem leitura há mais que isso, o leitor aparece como OFFLINE.
+    limite-offline: 30m
+  responsaveis:
+    # Índice aluno → responsáveis: a API só traz o vínculo na busca de cada responsável por id,
+    # então o índice é montado em segundo plano.
+    indice-habilitado: ${ROTA_INDICE_RESPONSAVEIS:true}
+    intervalo-indice: 10m
+    # Teto de buscas por id em cada montagem (protege a API externa); acima disso o índice fica incompleto.
+    max-buscas-indice: 2000
   auth:
     jwt-secret: ${ROTA_JWT_SECRET}
     access-ttl: 15m

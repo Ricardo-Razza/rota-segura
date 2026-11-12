@@ -10,8 +10,8 @@ import org.springframework.stereotype.Component;
 
 /**
  * Alunos na API externa (somente GET).
- * {@code sincronizar} e {@code kpi/{id}} não têm resposta documentada no contrato e ficam de fora
- * até o formato ser confirmado.
+ * {@code kpi/{id}} não tem resposta documentada no contrato e fica de fora
+ * até o formato ser confirmado; {@code sincronizar} é acionado sem ler o corpo.
  */
 @Component
 public class AlunosClient {
@@ -37,5 +37,15 @@ public class AlunosClient {
 
     public ResultadoCache<AlunoDto> buscarPorId(long id) {
         return api.porId(Recurso.ALUNOS, CAMINHO, id, AlunoDto.class);
+    }
+
+    /**
+     * Pede à API externa que sincronize os alunos ({@code GET /api/alunos/sincronizar}).
+     * O corpo da resposta não é lido; o cache de alunos é descartado em seguida.
+     *
+     * @return status HTTP da API externa
+     */
+    public int sincronizar() {
+        return api.acionar(Recurso.ALUNOS, CAMINHO + "/sincronizar");
     }
 }

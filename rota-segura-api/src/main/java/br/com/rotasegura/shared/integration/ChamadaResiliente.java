@@ -85,6 +85,11 @@ public class ChamadaResiliente {
         }
     }
 
+    /** Descarta os valores recentes de um recurso (ex.: depois de sincronizar alunos). */
+    public void invalidarRecentes(Recurso recurso) {
+        recentes.get(recurso).invalidateAll();
+    }
+
     /** Descarta os valores recentes (os "últimos valores bons" são mantidos). */
     public void invalidarRecentes() {
         recentes.values().forEach(Cache::invalidateAll);
