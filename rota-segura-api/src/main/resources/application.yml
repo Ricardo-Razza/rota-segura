@@ -26,6 +26,21 @@ rota-segura:
     cadastros-ttl: 10m
     tempo-real-ttl: 30s
     ultimo-valor-ttl: 24h
+  jornada:
+    zona: ${ROTA_ZONA:America/Sao_Paulo}
+    # Embarcado há mais que isso sem passar no leitor da escola → EMBARCOU_SEM_CHEGADA (crítico).
+    janela-sem-chegada: ${ROTA_JANELA_SEM_CHEGADA:40m}
+    # Mesmo aluno no mesmo leitor dentro deste intervalo = leitura duplicada (ignorada e contada).
+    intervalo-duplicidade: 2m
+    # Sem nenhuma leitura até este horário → AUSENTE.
+    limite-ausencia: "12:00"
+    # Limite próprio por turno da matrícula (chave sem acento, em maiúsculas). Ex.: VESPERTINO: "17:00"
+    limite-ausencia-por-turno: {}
+    # Valores de tipo_de_uso_dispositivo_id (confirmados na API: 1 = VEICULAR, 2 = ESCOLAR).
+    # Tipo fora destas listas não é classificado: o leitor é ignorado e reportado como pendência.
+    tipos-leitor:
+      embarque: ["1"]
+      chegada: ["2"]
   auth:
     jwt-secret: ${ROTA_JWT_SECRET}
     access-ttl: 15m
