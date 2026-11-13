@@ -1,7 +1,7 @@
 # Valores fictícios, usados só nos testes. O banco real vem do Testcontainers (@ServiceConnection).
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:1/nao-usado
+    url: jdbc:mysql://localhost:1/nao-usado
     username: nao-usado
     password: nao-usado
 

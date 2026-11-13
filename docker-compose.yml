@@ -4,24 +4,28 @@ name: rota-segura
 
 services:
   db:
-    image: postgres:17-alpine
+    image: mysql:8.4
     environment:
-      POSTGRES_DB: rota_segura
-      POSTGRES_USER: ${ROTA_DB_USUARIO:-rota_segura}
-      POSTGRES_PASSWORD: ${ROTA_DB_SENHA:?defina ROTA_DB_SENHA no .env}
+      MYSQL_DATABASE: rota_segura
+      MYSQL_USER: ${ROTA_DB_USUARIO:-rota_segura}
+      MYSQL_PASSWORD: ${ROTA_DB_SENHA:?defina ROTA_DB_SENHA no .env}
+      # Senha de root aleatória (aparece só no log da primeira subida); o painel usa o usuário acima.
+      MYSQL_RANDOM_ROOT_PASSWORD: "yes"
     volumes:
-      - dados-db:/var/lib/postgresql/data
+      - dados-db:/var/lib/mysql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      # 127.0.0.1 (TCP) só responde depois da inicialização completa; o socket responde antes.
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u $${MYSQL_USER} -p$${MYSQL_PASSWORD} --silent"]
       interval: 10s
       timeout: 5s
+      start_period: 30s
       retries: 10
 
   api:
     build: ./rota-segura-api
     env_file: .env
     environment:
-      ROTA_DB_URL: jdbc:postgresql://db:5432/rota_segura
+      ROTA_DB_URL: jdbc:mysql://db:3306/rota_segura
       ROTA_FORWARD_HEADERS: native
       ROTA_CORS_ORIGENS: ${ROTA_CORS_ORIGENS:-http://localhost:8081}
     depends_on:

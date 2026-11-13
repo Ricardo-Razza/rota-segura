@@ -1,7 +1,7 @@
 -- Alertas da operação. "chave" = tipo + entidade + janela: no máximo um alerta por chave (deduplicação no banco).
 -- A mensagem é gerada dos dados e não leva nome de aluno (só iniciais e id).
 create table alerta (
-    id                     bigserial primary key,
+    id                     bigint       not null auto_increment primary key,
     chave                  varchar(160) not null,
     tipo                   varchar(40)  not null,
     severidade             varchar(10)  not null,
@@ -15,17 +15,17 @@ create table alerta (
     status                 varchar(15)  not null,
     ativo                  boolean      not null default true,
     ocorrencias            integer      not null default 1,
-    primeira_ocorrencia_em timestamptz  not null,
-    ultima_ocorrencia_em   timestamptz  not null,
+    primeira_ocorrencia_em datetime(6)  not null,
+    ultima_ocorrencia_em   datetime(6)  not null,
     assumido_por           bigint,
-    assumido_em            timestamptz,
+    assumido_em            datetime(6),
     resolvido_por          bigint,
-    resolvido_em           timestamptz,
+    resolvido_em           datetime(6),
     comentario             varchar(1000),
     versao                 bigint       not null default 0,
     constraint ck_alerta_status check (status in ('ABERTO', 'EM_ANALISE', 'RESOLVIDO')),
     constraint ck_alerta_severidade check (severidade in ('CRITICO', 'ATENCAO', 'INFO'))
-);
+) engine = InnoDB default charset = utf8mb4 collate = utf8mb4_0900_ai_ci;
 
 create unique index ux_alerta_chave on alerta (chave);
 create index ix_alerta_status on alerta (status, severidade);

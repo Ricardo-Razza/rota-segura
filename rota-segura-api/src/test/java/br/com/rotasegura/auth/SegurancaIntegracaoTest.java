@@ -44,7 +44,7 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
-/** Fluxo completo de autenticação contra PostgreSQL real (Testcontainers). Usuários e senhas fictícios. */
+/** Fluxo completo de autenticação contra MySQL real (Testcontainers). Usuários e senhas fictícios. */
 @SpringBootTest
 @AutoConfigureMockMvc
 @Import(BancoDeTeste.class)
@@ -187,7 +187,7 @@ class SegurancaIntegracaoTest {
                 .andExpect(status().isUnauthorized());
 
         String refresh = refreshDe(mvc.perform(pedidoDeLogin("diretor.teste", SENHA)).andReturn());
-        jdbc.update("update refresh_token set expira_em = now() - interval '1 minute' where usado_em is null");
+        jdbc.update("update refresh_token set expira_em = utc_timestamp(6) - interval 1 minute where usado_em is null");
         mvc.perform(post("/api/v1/auth/refresh").cookie(new Cookie(COOKIE, refresh)))
                 .andExpect(status().isUnauthorized());
     }

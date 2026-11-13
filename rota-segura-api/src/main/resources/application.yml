@@ -16,6 +16,10 @@ spring:
     open-in-view: false
     hibernate:
       ddl-auto: validate
+    properties:
+      # MySQL não guarda fuso no datetime: tudo é gravado e lido em UTC; a conversão para o horário local
+      # acontece só na exibição (rota-segura.jornada.zona).
+      hibernate.jdbc.time_zone: UTC
 
 rota-segura:
   api-externa:

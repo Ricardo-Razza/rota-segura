@@ -5,7 +5,7 @@ embarque (leitor no ônibus) → chegada (leitor na escola), com divergências, 
 
 | Pasta | O que é |
 | --- | --- |
-| `rota-segura-api/` | Backend Java 21 · Spring Boot 3.5 · PostgreSQL/Flyway · JWT · Resilience4j · Caffeine |
+| `rota-segura-api/` | Backend Java 21 · Spring Boot 3.5 · MySQL 8.4/Flyway · JWT · Resilience4j · Caffeine |
 | `rota-segura-web/` | Frontend Angular 22 (standalone, signals, zoneless) · ngx-echarts · Leaflet/OSM · SSE |
 | `docker-compose.yml` | Banco + API + web (nginx) |
 | `.github/workflows/ci.yml` | Build, testes, cobertura, e2e e imagens Docker |
@@ -29,10 +29,10 @@ Abra <http://localhost:8081> e entre com o `ROTA_ADMIN_LOGIN` / `ROTA_ADMIN_SENH
 
 ### Em desenvolvimento
 
-Pré-requisitos: JDK 21, Node 24, Docker (para o PostgreSQL e para os testes com Testcontainers).
+Pré-requisitos: JDK 21, Node 24, Docker (para o MySQL e para os testes com Testcontainers).
 
 ```bash
-docker run -d --name rota-db -p 5432:5432 -e POSTGRES_DB=rota_segura -e POSTGRES_USER=rota_segura -e POSTGRES_PASSWORD=troque-esta-senha postgres:17-alpine
+docker run -d --name rota-db -p 3306:3306 -e MYSQL_DATABASE=rota_segura -e MYSQL_USER=rota_segura -e MYSQL_PASSWORD=troque-esta-senha -e MYSQL_RANDOM_ROOT_PASSWORD=yes mysql:8.4
 ```
 
 Backend (as variáveis do `.env` precisam estar no ambiente; `ROTA_COOKIE_SECURE=false` sem HTTPS):
@@ -59,7 +59,7 @@ Todas estão comentadas em [`.env.example`](.env.example). Nenhuma chave fica no
 | --- | --- | --- |
 | `ROTA_API_BASE_URL` | sim | URL da API externa (somente GET) |
 | `ROTA_API_AUTHORIZATION` | não | Valor do cabeçalho `Authorization` da API externa |
-| `ROTA_DB_URL` / `ROTA_DB_USUARIO` / `ROTA_DB_SENHA` | sim | Banco próprio do painel |
+| `ROTA_DB_URL` / `ROTA_DB_USUARIO` / `ROTA_DB_SENHA` | sim | Banco próprio do painel (MySQL 8.4; ex.: `jdbc:mysql://localhost:3306/rota_segura`). Datas gravadas em UTC |
 | `ROTA_JWT_SECRET` | sim | Segredo do JWT (≥ 32 caracteres aleatórios) |
 | `ROTA_ADMIN_LOGIN` / `ROTA_ADMIN_SENHA` | 1ª subida | Administrador inicial |
 | `ROTA_CORS_ORIGENS` | não | Origens do frontend autorizadas |
