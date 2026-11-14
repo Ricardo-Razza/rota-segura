@@ -1,7 +1,17 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  computed,
+  inject,
+  input,
+  linkedSignal,
+  signal,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { auditTime, merge } from 'rxjs';
 import { carga } from '../../core/api/carga';
+import { PosicaoAoVivo, RastreioVeiculo } from '../../core/api/modelos';
 import { PainelApi } from '../../core/api/painel-api.service';
 import { FiltrosStore } from '../../core/filtros/filtros.store';
 import { IndicadorConexao } from '../../core/sse/indicador-conexao';
@@ -17,7 +27,10 @@ import {
   FAIXA,
   SITUACAO_LEITOR,
   agruparLeitores,
+  aplicarPosicao,
+  distancia,
   filtrarVeiculos,
+  situacaoGps,
 } from './veiculos.logica';
 
 type Aba = 'veiculos' | 'leitores';
@@ -116,9 +129,15 @@ type Aba = 'veiculos' | 'leitores';
                         <span class="rs-nota">Ocupação —</span>
                       }
                     </span>
-                    <span class="rs-nota">
-                      GPS indisponível · {{ v.leitores.length }} leitor(es) · última leitura
-                      {{ haQuanto(v.ultimaLeitura) }}
+                    <span class="linha">
+                      <rs-status-badge [texto]="gps(v.id).texto" [tom]="gps(v.id).tom" />
+                      @if (rastreioDe(v.id)?.naCercaDaEscola) {
+                        <rs-status-badge texto="Na escola" tom="info" />
+                      }
+                      <span class="rs-nota">
+                        {{ v.leitores.length }} leitor(es) · última leitura
+                        {{ haQuanto(v.ultimaLeitura) }}
+                      </span>
                     </span>
                   </button>
                 </li>
@@ -129,11 +148,34 @@ type Aba = 'veiculos' | 'leitores';
           </rs-chart-card>
 
           <rs-chart-card
-            titulo="Mapa"
+            titulo="Mapa ao vivo"
             [estado]="status.estado()"
             (tentarDeNovo)="status.recarregar()"
           >
-            <rs-mapa-veiculos [veiculos]="filtrados()" (selecionar)="selecionar($event)" />
+            <rs-mapa-veiculos
+              [veiculos]="filtrados()"
+              [rastreios]="rastreios()"
+              [raioCercaM]="rastreio.dados()?.raioCercaM ?? 0"
+              [selecionadoId]="selecionadoId()"
+              (selecionar)="selecionar($event)"
+            />
+            @if (rastreio.estado() === 'erro') {
+              <p class="rs-aviso">
+                Não foi possível carregar o GPS.
+                <button
+                  type="button"
+                  class="rs-botao rs-botao--pequeno"
+                  (click)="rastreio.recarregar()"
+                >
+                  Tentar de novo
+                </button>
+              </p>
+            } @else if (rastreio.dados(); as g) {
+              <p class="rs-nota">
+                {{ comGps() }} de {{ filtrados().length }} veículo(s) com GPS · posição consultada a
+                cada {{ g.intervaloS }} s
+              </p>
+            }
           </rs-chart-card>
         </div>
 
@@ -175,6 +217,25 @@ type Aba = 'veiculos' | 'leitores';
                   <dt>Capacidade</dt>
                   <dd>{{ d.veiculo.capacidade ?? '—' }}</dd>
                 </div>
+                <div>
+                  <dt>GPS</dt>
+                  <dd>
+                    <rs-status-badge
+                      [texto]="gps(d.veiculo.id).texto"
+                      [tom]="gps(d.veiculo.id).tom"
+                    />
+                  </dd>
+                </div>
+                @if (rastreioDe(d.veiculo.id); as r) {
+                  <div>
+                    <dt>Distância até a escola</dt>
+                    <dd>{{ distancia(r.distanciaEscolaM) }}</dd>
+                  </div>
+                  <div>
+                    <dt>Na escola desde</dt>
+                    <dd>{{ hora(r.naCercaDesde) }}</dd>
+                  </div>
+                }
               </dl>
               <div class="rs-grade rs-grade--2">
                 <div>
@@ -334,6 +395,7 @@ export class Veiculos {
   protected readonly percentual = percentual;
   protected readonly haQuanto = haQuanto;
   protected readonly rotulo = rotuloVeiculo;
+  protected readonly distancia = distancia;
 
   protected readonly aba = signal<Aba>('veiculos');
   protected readonly termo = signal('');
@@ -359,8 +421,22 @@ export class Veiculos {
     return id === null ? null : this.api.veiculo(id);
   });
 
+  /** GPS ao vivo: carga inicial (com o rastro do dia) e depois o evento SSE `veiculo.posicao`. */
+  protected readonly rastreio = carga(() => this.api.rastreamento());
+  protected readonly rastreios = linkedSignal<RastreioVeiculo[]>(
+    () => this.rastreio.dados()?.veiculos ?? [],
+  );
+  private readonly porVeiculo = computed(
+    () => new Map(this.rastreios().map((r) => [r.veiculoId, r])),
+  );
+  /** Relógio de 1 s para o "há X s" do GPS andar sozinho. */
+  private readonly agora = signal(Date.now());
+
   protected readonly filtrados = computed(() =>
     filtrarVeiculos(this.status.dados()?.veiculos ?? [], this.termo(), this.estados()),
+  );
+  protected readonly comGps = computed(
+    () => this.filtrados().filter((v) => this.porVeiculo().get(v.id)?.posicao).length,
   );
   protected readonly chips = computed<OpcaoChip[]>(() => {
     const por = this.status.dados()?.porEstado ?? {};
@@ -376,6 +452,12 @@ export class Veiculos {
 
   constructor() {
     const sse = inject(SseService);
+    sse
+      .de<PosicaoAoVivo>('veiculo.posicao')
+      .pipe(takeUntilDestroyed())
+      .subscribe((evento) => this.rastreios.update((lista) => aplicarPosicao(lista, evento)));
+    const relogio = setInterval(() => this.agora.set(Date.now()), 1000);
+    inject(DestroyRef).onDestroy(() => clearInterval(relogio));
     merge(sse.de('veiculo.atualizado'), sse.de('jornada.atualizada'))
       .pipe(auditTime(3000), takeUntilDestroyed())
       .subscribe(() => {
@@ -384,6 +466,14 @@ export class Veiculos {
           this.detalhe.recarregar(true);
         }
       });
+  }
+
+  protected rastreioDe(id: number): RastreioVeiculo | undefined {
+    return this.porVeiculo().get(id);
+  }
+
+  protected gps(id: number) {
+    return situacaoGps(this.porVeiculo().get(id), this.agora());
   }
 
   protected selecionar(id: number): void {

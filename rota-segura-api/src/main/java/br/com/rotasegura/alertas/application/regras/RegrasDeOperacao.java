@@ -11,12 +11,16 @@ import br.com.rotasegura.dispositivos.application.SaudeLeitoresService.TipoUso;
 import br.com.rotasegura.dispositivos.integration.DispositivoFacialDto;
 import br.com.rotasegura.jornada.domain.Severidade;
 import br.com.rotasegura.shared.integration.Conversoes;
+import br.com.rotasegura.veiculos.application.RastreamentoProperties;
+import br.com.rotasegura.veiculos.application.RastreamentoService;
+import br.com.rotasegura.veiculos.application.RastreamentoService.RastreioVeiculo;
 import br.com.rotasegura.veiculos.application.StatusVeiculosService.StatusVeiculo;
 import br.com.rotasegura.veiculos.domain.FaixaOcupacao;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import org.springframework.stereotype.Component;
 
 /** Regras sobre veículos e leitores. */
@@ -84,6 +88,48 @@ public final class RegrasDeOperacao {
                 resultado.add(new Ocorrencia(TipoAlerta.LEITOR_SEM_LEITURA, Severidade.ATENCAO, EntidadeAlerta.LEITOR,
                         String.valueOf(leitor.id()), rotulo, ctx.janelaDoDia(), mensagem, leitor.escolaId(),
                         leitor.veiculoId()));
+            }
+            return resultado;
+        }
+    }
+
+    /**
+     * Cerca virtual: o GPS mostra o veículo no raio da escola há mais que o tempo de desembarque e ainda há
+     * aluno a bordo (embarcou, não passou no leitor da escola e está dentro da janela). Posição atrasada não
+     * conta: sem GPS recente não dá para afirmar que o ônibus está na escola.
+     */
+    @Component
+    public static class CercaVirtual implements RegraAlerta {
+
+        private final RastreamentoService rastreamento;
+        private final RastreamentoProperties propriedades;
+
+        public CercaVirtual(RastreamentoService rastreamento, RastreamentoProperties propriedades) {
+            this.rastreamento = rastreamento;
+            this.propriedades = propriedades;
+        }
+
+        @Override
+        public List<Ocorrencia> avaliar(ContextoAvaliacao ctx) {
+            Map<Long, RastreioVeiculo> rastreios = rastreamento.todos();
+            List<Ocorrencia> resultado = new ArrayList<>();
+            for (StatusVeiculo v : ctx.veiculos()) {
+                RastreioVeiculo r = rastreios.get(v.id());
+                if (v.aBordo() == 0 || r == null || r.atrasada() || r.naCercaDesde() == null) {
+                    continue;
+                }
+                Duration naCerca = Duration.between(r.naCercaDesde(), ctx.agora());
+                if (naCerca.compareTo(propriedades.tempoDesembarque()) < 0) {
+                    continue;
+                }
+                String rotulo = ctx.rotuloVeiculo(v.id());
+                String mensagem = "Veículo " + rotulo + " está na escola #" + r.escolaId() + " desde "
+                        + ContextoAvaliacao.hora(r.naCercaDesde()) + " (" + naCerca.toMinutes() + " min) e "
+                        + v.aBordo() + (v.aBordo() == 1 ? " aluno a bordo ainda não passou" : " alunos a bordo ainda não passaram")
+                        + " no leitor da escola.";
+                resultado.add(new Ocorrencia(TipoAlerta.CERCA_VIRTUAL_SEM_DESEMBARQUE, Severidade.ATENCAO,
+                        EntidadeAlerta.VEICULO, String.valueOf(v.id()), rotulo, ctx.janelaDoDia(), mensagem,
+                        r.escolaId(), v.id()));
             }
             return resultado;
         }

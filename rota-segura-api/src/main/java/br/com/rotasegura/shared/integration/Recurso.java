@@ -6,7 +6,9 @@ public enum Recurso {
     VEICULOS("veiculos", false),
     RESPONSAVEIS("responsaveis", false),
     DISPOSITIVOS("dispositivos", false),
-    PRESENCA("presenca", true);
+    PRESENCA("presenca", true),
+    /** Posição GPS dos veículos ({@code /api/veiculos/{id}/dados}); consultada pelo rastreamento, sem cache. */
+    RASTREAMENTO("rastreamento", true);
 
     private final String nome;
     private final boolean tempoReal;

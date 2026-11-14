@@ -65,6 +65,19 @@ rota-segura:
     # Mesma regra para o card do veículo e para o alerta de lotação.
     limite-atencao: 90
     limite-critico: 100
+  rastreamento:
+    # GPS ao vivo: última posição de cada veículo com rastreador (GET /api/veiculos/{id}/dados).
+    habilitado: ${ROTA_RASTREAMENTO_HABILITADO:true}
+    intervalo: ${ROTA_RASTREAMENTO_INTERVALO:5s}
+    # Cerca virtual: raio em volta da escola de destino (coordenada vinda dos leitores faciais).
+    raio-escola-m: 300
+    # Na cerca há mais que isso, com aluno a bordo sem passar no leitor da escola → alerta.
+    tempo-desembarque: 10m
+    # Posição do GPS mais antiga que isso aparece como "atrasada" (e não conta para a cerca).
+    limite-posicao-atrasada: 2m
+    # Novo ponto no rastro só depois de andar isso; teto de pontos guardados por veículo no dia.
+    distancia-minima-m: 15
+    max-pontos-rastro: 3000
   alertas:
     avaliacao-habilitada: ${ROTA_ALERTAS_HABILITADOS:true}
     intervalo: 30s

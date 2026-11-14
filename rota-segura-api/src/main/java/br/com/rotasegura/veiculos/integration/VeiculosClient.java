@@ -30,4 +30,12 @@ public class VeiculosClient {
     public ResultadoCache<ColecaoPaginada<VeiculoDto>> listarTodos() {
         return api.todas(Recurso.VEICULOS, CAMINHO, PAGINA);
     }
+
+    /**
+     * Dados do veículo com a última posição do rastreador ({@code GET /api/veiculos/{id}/dados}), sem cache.
+     * {@code /api/veiculos/{id}/localizacao} não é usada: hoje devolve erro do rastreador no próprio ERP.
+     */
+    public DadosVeiculoDto dados(long id) {
+        return api.subrota(Recurso.RASTREAMENTO, CAMINHO, id, "/dados", DadosVeiculoDto.class);
+    }
 }

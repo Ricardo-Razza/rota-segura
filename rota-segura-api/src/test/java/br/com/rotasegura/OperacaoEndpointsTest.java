@@ -29,6 +29,8 @@ import br.com.rotasegura.presenca.integration.PresencaDto;
 import br.com.rotasegura.responsaveis.integration.ResponsaveisClient;
 import br.com.rotasegura.shared.integration.ColecaoPaginada;
 import br.com.rotasegura.shared.integration.ResultadoCache;
+import br.com.rotasegura.veiculos.application.RastreamentoService;
+import br.com.rotasegura.veiculos.integration.DadosVeiculoDto;
 import br.com.rotasegura.veiculos.integration.VeiculoDto;
 import br.com.rotasegura.veiculos.integration.VeiculosClient;
 import java.time.Clock;
@@ -71,6 +73,8 @@ class OperacaoEndpointsTest {
     @Autowired
     AlertaRepository alertas;
     @Autowired
+    RastreamentoService rastreamento;
+    @Autowired
     io.micrometer.core.instrument.MeterRegistry registro;
 
     @MockitoSpyBean
@@ -89,6 +93,7 @@ class OperacaoEndpointsTest {
     @BeforeEach
     void cenario() {
         alertas.deleteAll();
+        rastreamento.reiniciar();
         doReturn(AGORA).when(relogio).instant();
         doReturn(AGORA.toEpochMilli()).when(relogio).millis();
         doReturn(ZoneOffset.UTC).when(relogio).getZone();
@@ -150,6 +155,56 @@ class OperacaoEndpointsTest {
                 .andExpect(jsonPath("$.veiculos[1].estado").value("EM_ROTA"))
                 .andExpect(jsonPath("$.veiculos[1].aBordo").value(1))
                 .andExpect(jsonPath("$.porEstado.EM_ROTA").value(1));
+    }
+
+    @Test
+    void cercaVirtualAlertaVeiculoParadoNaEscolaComAlunoABordoERespeitaEscopo() throws Exception {
+        // 102 embarcou no veículo 8 às 07:45 e não passou no leitor da escola 60 (a bordo às 08:00).
+        when(presencas.listarTodas()).thenReturn(atual(List.of(
+                presenca("5", "102", DIA + " 07:45:00", "12"))));
+
+        // 07:49: GPS a ~55 m da escola (coordenada fictícia dos leitores: -10.0, -50.0).
+        relogioEm("T10:49:00Z");
+        when(veiculos.dados(8)).thenReturn(gps(-10.0005, DIA + "T07:48:50-03:00"));
+        rastreamento.atualizar();
+        // 08:00: continua dentro da cerca, posição recente.
+        relogioEm("T11:00:00Z");
+        when(veiculos.dados(8)).thenReturn(gps(-10.0003, DIA + "T07:59:55-03:00"));
+        rastreamento.atualizar();
+
+        ciclo.executar();
+        Alerta cerca = alertas.findByChave("CERCA_VIRTUAL_SEM_DESEMBARQUE:VEICULO:8:" + DIA).orElseThrow();
+        assertThat(cerca.getSeveridade()).isEqualTo(Severidade.ATENCAO);
+        assertThat(cerca.getMensagem()).contains("BBB0B08").contains("escola #60").contains("07:48")
+                .contains("1 aluno a bordo").doesNotContain("Fictício");
+
+        mvc.perform(get("/api/v1/veiculos/rastreamento").with(perfil("GESTAO")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.intervaloS").value(5))
+                .andExpect(jsonPath("$.veiculos[0].veiculoId").value(8))
+                .andExpect(jsonPath("$.veiculos[0].escolaId").value(60))
+                .andExpect(jsonPath("$.veiculos[0].naCercaDaEscola").value(true))
+                .andExpect(jsonPath("$.veiculos[0].atrasada").value(false))
+                .andExpect(jsonPath("$.veiculos[0].rastro.length()").value(2))
+                .andExpect(jsonPath("$.veiculos[0].posicao.velocidadeKmh").value(0.0));
+        mvc.perform(get("/api/v1/veiculos/rastreamento").with(token("MONITOR", List.of(), List.of(7L))))
+                .andExpect(jsonPath("$.veiculos.length()").value(0));
+        mvc.perform(get("/api/v1/veiculos/8/rastreamento").with(token("MONITOR", List.of(), List.of(7L))))
+                .andExpect(status().isForbidden());
+        mvc.perform(get("/api/v1/veiculos/8/rastreamento").with(token("DIRETOR", List.of(60L), List.of())))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void semGpsRecenteNaoHaAlertaDeCerca() throws Exception {
+        when(presencas.listarTodas()).thenReturn(atual(List.of(
+                presenca("5", "102", DIA + " 07:45:00", "12"))));
+        // Última posição na escola é das 07:48 e o rastreador parou de responder: não dá para afirmar nada.
+        when(veiculos.dados(8)).thenReturn(gps(-10.0005, DIA + "T07:48:00-03:00"));
+        rastreamento.atualizar();
+
+        ciclo.executar();
+        assertThat(alertas.findByChave("CERCA_VIRTUAL_SEM_DESEMBARQUE:VEICULO:8:" + DIA)).isEmpty();
     }
 
     @Test
@@ -301,6 +356,17 @@ class OperacaoEndpointsTest {
         return jwt().jwt(j -> j.subject("1").claim("perfil", perfil).claim("escolas", escolas)
                         .claim("veiculos", veiculos))
                 .authorities(new SimpleGrantedAuthority("ROLE_" + perfil));
+    }
+
+    private void relogioEm(String horaUtc) {
+        Instant instante = Instant.parse(DIA + horaUtc);
+        doReturn(instante).when(relogio).instant();
+        doReturn(instante.toEpochMilli()).when(relogio).millis();
+    }
+
+    private static DadosVeiculoDto gps(double latitude, String fixTime) {
+        return new DadosVeiculoDto(new DadosVeiculoDto.LocalizacaoDto(latitude, -50.0, 0.0, 0.0, fixTime, true,
+                new DadosVeiculoDto.Atributos(false)));
     }
 
     private static <T> ResultadoCache<ColecaoPaginada<T>> atual(List<T> itens) {

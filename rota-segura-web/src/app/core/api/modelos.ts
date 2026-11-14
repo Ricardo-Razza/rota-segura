@@ -202,6 +202,50 @@ export interface LeituraRecente {
   alunoId: number;
 }
 
+/** Posição do GPS do veículo (hora do GPS no fuso das escolas). */
+export interface PosicaoVeiculo {
+  latitude: number;
+  longitude: number;
+  velocidadeKmh: number | null;
+  rumo: number | null;
+  emMovimento: boolean | null;
+  registradaEm: string;
+}
+
+export interface PontoRastro {
+  latitude: number;
+  longitude: number;
+  em: string;
+}
+
+export interface RastreioVeiculo {
+  veiculoId: number;
+  escolaId: number | null;
+  posicao: PosicaoVeiculo | null;
+  /** Posição mais antiga que o limite do backend (ou nenhuma). */
+  atrasada: boolean;
+  /** A última consulta ao rastreador falhou; a posição é a última boa. */
+  falhando: boolean;
+  distanciaEscolaM: number | null;
+  naCercaDaEscola: boolean;
+  naCercaDesde: string | null;
+  /** Pontos do dia; vem vazio nos eventos de tempo real. */
+  rastro: PontoRastro[];
+}
+
+export interface RastreamentoAoVivo {
+  avaliadoEm: string;
+  intervaloS: number;
+  raioCercaM: number;
+  veiculos: RastreioVeiculo[];
+}
+
+/** Evento SSE `veiculo.posicao`. */
+export interface PosicaoAoVivo {
+  veiculo: RastreioVeiculo;
+  novoPonto: boolean;
+}
+
 export interface DetalheVeiculo {
   veiculo: StatusVeiculo;
   embarcados: Embarcado[];

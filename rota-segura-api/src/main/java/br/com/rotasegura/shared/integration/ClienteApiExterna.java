@@ -55,6 +55,22 @@ public class ClienteApiExterna {
     }
 
     /**
+     * Sub-rota de um registro ({@code caminho/{id}/sufixo}), sem cache: para quem consulta em ciclo curto
+     * e guarda o próprio estado (ex.: rastreamento a cada 5 s). Tem retry e circuit breaker do recurso.
+     *
+     * @return o corpo, ou {@code null} se a API devolver corpo vazio
+     */
+    public <T> T subrota(Recurso recurso, String caminho, long id, String sufixo, Class<T> tipo) {
+        return chamada.protegida(recurso, () -> {
+            try {
+                return restClient.get().uri(caminho + "/{id}" + sufixo, id).retrieve().body(tipo);
+            } catch (HttpClientErrorException.NotFound e) {
+                throw new RecursoNaoEncontradoException(recurso.nome(), id);
+            }
+        });
+    }
+
+    /**
      * Aciona uma rota GET de operação (ex.: {@code /api/alunos/sincronizar}), sem cache e descartando o corpo:
      * a resposta não tem formato documentado e pode conter dado pessoal.
      *

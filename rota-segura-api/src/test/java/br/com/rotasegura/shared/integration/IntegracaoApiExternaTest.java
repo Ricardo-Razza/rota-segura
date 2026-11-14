@@ -220,6 +220,35 @@ class IntegracaoApiExternaTest {
         API.verify(1, getRequestedFor(urlPathEqualTo("/api/alunos/99")));
     }
 
+    @Test
+    void dadosDoVeiculoLeSoALocalizacaoEAceitaErroDoRastreador() {
+        // Formato conferido na API real (só nomes de campos); valores fictícios.
+        API.stubFor(get(urlPathEqualTo("/api/veiculos/7/dados")).willReturn(okJson("""
+                {"veiculo":{"id":7,"placa":"AAA0A07"},
+                 "kpi":{"alunosABordo":1,"capacidadeMaxima":40,"percentualOcupacao":2.5},
+                 "localizacao":{"id":1,"attributes":{"distance":0.0,"totalDistance":10.0,"motion":true},
+                   "deviceId":3,"protocol":"ficticio","serverTime":"2026-03-10T10:59:58.000+00:00",
+                   "deviceTime":"2026-03-10T10:59:57.000+00:00","fixTime":"2026-03-10T10:59:57.000+00:00",
+                   "valid":true,"latitude":-10.01,"longitude":-50.0,"altitude":0.0,"speed":12.5,"course":90.0,
+                   "address":null,"accuracy":0.0,"network":null,"geofenceIds":null},
+                 "alunos_na_rota":{"alunoId":42,"nome":"Aluno Ficticio","turma":"1A","horarioEmbarque":"07:00",
+                   "pontoEmbarque":"Ponto Ficticio"},
+                 "eventos":[],"ultimo_motorista":null}""")));
+        API.stubFor(get(urlPathEqualTo("/api/veiculos/8/dados")).willReturn(okJson("""
+                {"veiculo":{"id":8},"localizacao":{"msg":"erro fictício do rastreador","error":true}}""")));
+
+        var dados = veiculos.dados(7);
+        assertThat(dados.localizacao().latitude()).isEqualTo(-10.01);
+        assertThat(dados.localizacao().speed()).isEqualTo(12.5);
+        assertThat(dados.localizacao().fixTime()).isEqualTo("2026-03-10T10:59:57.000+00:00");
+        assertThat(dados.localizacao().attributes().motion()).isTrue();
+        assertThat(dados.toString()).as("nome do aluno nem é desserializado").doesNotContain("Ficticio");
+
+        var comErro = veiculos.dados(8);
+        assertThat(comErro.localizacao().latitude()).isNull();
+        assertThat(comErro.localizacao().fixTime()).isNull();
+    }
+
     private static void stubPaginaVeiculos(int pagina, String currentPageJson, int ultima, String... placas) {
         API.stubFor(get(urlPathEqualTo("/api/veiculos"))
                 .withQueryParam("page", equalTo(String.valueOf(pagina)))

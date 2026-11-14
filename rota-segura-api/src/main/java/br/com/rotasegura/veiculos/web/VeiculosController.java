@@ -1,5 +1,8 @@
 package br.com.rotasegura.veiculos.web;
 
+import br.com.rotasegura.veiculos.application.RastreamentoService;
+import br.com.rotasegura.veiculos.application.RastreamentoService.RastreamentoAoVivo;
+import br.com.rotasegura.veiculos.application.RastreamentoService.RastreioVeiculo;
 import br.com.rotasegura.veiculos.application.StatusVeiculosService;
 import br.com.rotasegura.veiculos.application.StatusVeiculosService.DetalheVeiculo;
 import br.com.rotasegura.veiculos.application.StatusVeiculosService.StatusDosVeiculos;
@@ -17,9 +20,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class VeiculosController {
 
     private final StatusVeiculosService status;
+    private final RastreamentoService rastreamento;
 
-    public VeiculosController(StatusVeiculosService status) {
+    public VeiculosController(StatusVeiculosService status, RastreamentoService rastreamento) {
         this.status = status;
+        this.rastreamento = rastreamento;
     }
 
     @GetMapping("/status")
@@ -32,5 +37,18 @@ public class VeiculosController {
     @Operation(summary = "Detalhe do veículo: embarcados de hoje (iniciais e turma) e últimas leituras.")
     DetalheVeiculo detalhe(@PathVariable long id) {
         return status.detalhe(id);
+    }
+
+    @GetMapping("/rastreamento")
+    @Operation(summary = "GPS ao vivo: posição, rastro do dia e cerca virtual dos veículos no escopo. "
+            + "Atualizações chegam pelo evento SSE veiculo.posicao.")
+    RastreamentoAoVivo rastreamento() {
+        return rastreamento.noEscopo();
+    }
+
+    @GetMapping("/{id}/rastreamento")
+    @Operation(summary = "GPS ao vivo de um veículo: posição, rastro do dia e cerca virtual.")
+    RastreioVeiculo rastreamento(@PathVariable long id) {
+        return rastreamento.doVeiculo(id);
     }
 }

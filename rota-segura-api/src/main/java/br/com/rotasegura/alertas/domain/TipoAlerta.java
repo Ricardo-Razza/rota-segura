@@ -13,5 +13,7 @@ public enum TipoAlerta {
     /** Leitor sem leitura, em horário de rota, há mais que o limite offline. */
     LEITOR_SEM_LEITURA,
     /** Leitor com tipo de uso sem mapeamento: as leituras dele são ignoradas (alerta de configuração). */
-    LEITOR_TIPO_DESCONHECIDO
+    LEITOR_TIPO_DESCONHECIDO,
+    /** Veículo dentro da cerca virtual da escola há mais que o tempo de desembarque, com aluno a bordo. */
+    CERCA_VIRTUAL_SEM_DESEMBARQUE
 }

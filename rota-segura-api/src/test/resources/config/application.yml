@@ -11,6 +11,9 @@ rota-segura:
   alertas:
     # Nos testes o ciclo de 30 s só roda quando o teste chama executar().
     avaliacao-habilitada: false
+  rastreamento:
+    # Nos testes o GPS só é consultado quando o teste chama atualizar().
+    habilitado: false
   responsaveis:
     # Nos testes o índice é montado só quando o teste pede (sem tarefa agendada chamando a API).
     indice-habilitado: false

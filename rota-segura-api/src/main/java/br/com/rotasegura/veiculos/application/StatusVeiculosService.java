@@ -44,7 +44,8 @@ import org.springframework.stereotype.Service;
  *   <li>O cadastro do aluno não informa o veículo: "esperados" é estimado pelos alunos que embarcaram no
  *       veículo nos últimos dias letivos ({@code rota-segura.veiculos.dias-historico}).</li>
  *   <li>A API não informa capacidade: sem {@code rota-segura.veiculos.capacidade}, ocupação e faixa ficam nulas.</li>
- *   <li>Não há rota de rastreador autorizada: a posição exibida é a da escola ligada aos leitores do veículo.
+ *   <li>{@code latitude}/{@code longitude} são da escola ligada aos leitores do veículo; o GPS ao vivo do
+ *       ônibus fica no {@link RastreamentoService}.
  *       A coordenada das leituras não é usada (indicaria o ponto de embarque de uma criança).</li>
  * </ul>
  */

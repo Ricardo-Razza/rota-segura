@@ -40,7 +40,7 @@ Contrato completo (Swagger/OpenAPI): `<URL_DO_SWAGGER>` — **gere os DTOs a par
 | Alunos | `GET /api/alunos` (paginada), `GET /api/alunos/{id}`, `GET /api/alunos/sincronizar`, `GET /api/alunos/kpi/{id}` |
 | Leitores faciais | `GET /api/dispositivos_faciais` (paginada), `GET /api/dispositivos_faciais/{id}` |
 | Responsáveis | `GET /api/responsaveis` (paginada), `GET /api/responsaveis/{id}` |
-| Veículos | `GET /api/veiculos` (paginada) |
+| Veículos | `GET /api/veiculos` (paginada), `GET /api/veiculos/{id}/dados` (última posição do rastreador; só o bloco `localizacao` é lido) |
 
 ### Envelope de paginação
 
@@ -74,6 +74,7 @@ Todos os campos chegam como string. Converta ids e coordenadas com segurança, a
 - `tipo_de_uso_dispositivo_id` define se o leitor é de **embarque (veículo)** ou de **chegada (escola)**. Mapeie os valores em `application.yml`; nada fixo no código. Tipo desconhecido gera alerta de configuração e o evento é ignorado — nunca classificar por palpite.
 - `veiculo_id` / `veiculo_prefixo` ligam o leitor ao veículo; `escola_id` liga à escola.
 - `escola_latitude`, `escola_longitude` e `veiculo_identificador_rastreador` permitem cerca virtual (ônibus entrou no raio da escola → painel passa a esperar os desembarques).
+- **GPS ao vivo:** o backend consulta `GET /api/veiculos/{id}/dados` a cada 5 s (`rota-segura.rastreamento.intervalo`) e usa só `localizacao` (formato Traccar: `latitude`, `longitude`, `speed` em nós, `course`, `fixTime`, `valid`, `attributes.motion`). O Swagger não descreve essa resposta; os nomes foram conferidos na API real. O bloco `alunos_na_rota` traz nome de aluno e **não é lido**. `GET /api/veiculos/{id}/localizacao` não é usada: devolve erro 401 do rastreador no próprio ERP.
 
 ### Perguntas em aberto (pergunte ao usuário quando chegar nelas)
 
