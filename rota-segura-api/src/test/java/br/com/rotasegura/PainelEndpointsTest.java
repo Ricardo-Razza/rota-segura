@@ -26,8 +26,11 @@ import br.com.rotasegura.responsaveis.integration.ResponsaveisClient;
 import br.com.rotasegura.shared.erro.ApiExternaIndisponivelException;
 import br.com.rotasegura.shared.integration.ColecaoPaginada;
 import br.com.rotasegura.shared.integration.ResultadoCache;
+import br.com.rotasegura.veiculos.domain.PontoRastroSalvo;
+import br.com.rotasegura.veiculos.domain.PontoRastroSalvoRepository;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.stream.Stream;
@@ -59,6 +62,8 @@ class PainelEndpointsTest {
     MockMvc mvc;
     @Autowired
     RegistroAuditoriaRepository auditoria;
+    @Autowired
+    PontoRastroSalvoRepository trajetos;
 
     @MockitoBean
     AlunosClient alunos;
@@ -145,24 +150,32 @@ class PainelEndpointsTest {
     }
 
     @Test
-    void locaisDaJornadaRespeitamEscopoSaoAuditadosEAceitamLeituraSemCoordenada() throws Exception {
-        // Coordenadas fictícias; a leitura 2 vem com "0" (leitor sem GPS) e deve virar nula.
+    void locaisDaJornadaRespeitamEscopoSaoAuditadosEUsamOGpsDoOnibusNoEmbarque() throws Exception {
+        // Coordenadas fictícias. O leitor do ônibus manda um ponto fixo (-10.1234), que é ignorado: o embarque
+        // vem do trajeto do ônibus salvo no banco (parado em -10.2 desde 06:58, saiu a ~22 m às 07:04).
+        trajetos.deleteAll();
+        trajetos.save(new PontoRastroSalvo(7, LocalDateTime.parse(DIA + "T06:40:00"), -10.3, -50.2));
+        trajetos.save(new PontoRastroSalvo(7, LocalDateTime.parse(DIA + "T06:58:00"), -10.2, -50.2));
+        trajetos.save(new PontoRastroSalvo(7, LocalDateTime.parse(DIA + "T07:04:00"), -10.2002, -50.2));
         when(presencas.buscarPorId(1)).thenReturn(new ResultadoCache<>(
                 new PresencaDto("1", "101", DIA + " 07:00:00", "7", "11", null, "-10.1234", "-50,5678",
                         "Enviada"), OBTIDO, false));
         when(presencas.buscarPorId(2)).thenReturn(new ResultadoCache<>(
-                new PresencaDto("2", "101", DIA + " 07:25:00", null, "21", null, "0", "0", " "), OBTIDO, true));
+                new PresencaDto("2", "101", DIA + " 07:25:00", null, "21", null, "-10.0", "-50,0", " "), OBTIDO,
+                true));
         long antes = acessos(AcaoAuditoria.ACESSO_LOCAL_EMBARQUE);
 
         mvc.perform(get("/api/v1/alunos/101/jornadas/" + DIA + "/locais").with(diretorDa(50)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.passos", hasSize(2)))
                 .andExpect(jsonPath("$.passos[0].tipo").value("EMBARQUE"))
-                .andExpect(jsonPath("$.passos[0].latitude").value(-10.1234))
-                .andExpect(jsonPath("$.passos[0].longitude").value(-50.5678))
+                .andExpect(jsonPath("$.passos[0].latitude").value(-10.2))
+                .andExpect(jsonPath("$.passos[0].longitude").value(-50.2))
+                .andExpect(jsonPath("$.passos[0].origemLocal").value("GPS_ONIBUS"))
                 .andExpect(jsonPath("$.passos[0].statusNotificacao").value("Enviada"))
                 .andExpect(jsonPath("$.passos[1].tipo").value("CHEGADA"))
-                .andExpect(jsonPath("$.passos[1].latitude").doesNotExist())
+                .andExpect(jsonPath("$.passos[1].latitude").value(-10.0))
+                .andExpect(jsonPath("$.passos[1].origemLocal").value("LEITOR"))
                 .andExpect(jsonPath("$.passos[1].statusNotificacao").doesNotExist())
                 .andExpect(jsonPath("$.desatualizado").value(true))
                 .andExpect(jsonPath("$.incompleto").value(false));
@@ -174,15 +187,18 @@ class PainelEndpointsTest {
     }
 
     @Test
-    void locaisDaJornadaMarcamIncompletoQuandoODetalheFalha() throws Exception {
+    void locaisDaJornadaSemTrajetoSalvoNaoInventamOEmbarqueEMarcamIncompleto() throws Exception {
+        trajetos.deleteAll();
         when(presencas.buscarPorId(1)).thenThrow(new ApiExternaIndisponivelException("presenca_escolar", null));
         when(presencas.buscarPorId(2)).thenReturn(new ResultadoCache<>(
-                new PresencaDto("2", "101", DIA + " 07:25:00", null, "21", null, null, null, null), OBTIDO, false));
+                new PresencaDto("2", "101", DIA + " 07:25:00", null, "21", null, "0", "0", null), OBTIDO, false));
 
         mvc.perform(get("/api/v1/alunos/101/jornadas/" + DIA + "/locais").with(perfil("GESTAO")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.passos", hasSize(2)))
                 .andExpect(jsonPath("$.passos[0].latitude").doesNotExist())
+                .andExpect(jsonPath("$.passos[0].origemLocal").doesNotExist())
+                .andExpect(jsonPath("$.passos[1].latitude").doesNotExist())
                 .andExpect(jsonPath("$.incompleto").value(true));
     }
 

@@ -12,17 +12,23 @@ import br.com.rotasegura.shared.erro.ApiExternaIndisponivelException;
 import br.com.rotasegura.shared.erro.RecursoNaoEncontradoException;
 import br.com.rotasegura.shared.integration.Conversoes;
 import br.com.rotasegura.shared.integration.ResultadoCache;
+import br.com.rotasegura.veiculos.domain.PontoNoMomento;
+import br.com.rotasegura.veiculos.domain.PontoRastroSalvo;
+import br.com.rotasegura.veiculos.domain.PontoRastroSalvoRepository;
+import br.com.rotasegura.veiculos.domain.RastroDoDia.PontoRastro;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.stereotype.Service;
 
 /**
  * Onde o aluno embarcou e chegou num dia: o local de cada leitura vem do detalhe da presença na API externa.
  * <p>
- * O ponto de embarque fica perto da casa da criança, então: só dentro do escopo do usuário, cada consulta é
- * auditada (só o id do aluno), as coordenadas nunca vão para log nem para o banco, e a data vai no caminho
+ * O embarque vem do trajeto do ônibus guardado no banco (a API manda a coordenada fixa do leitor). O ponto de
+ * embarque fica perto da casa da criança, então: só dentro do escopo do usuário, cada consulta é
+ * auditada (só o id do aluno), o local nunca vai para log nem é gravado junto do aluno, e a data vai no caminho
  * da URL, nunca dado pessoal.
  */
 @Service
@@ -32,13 +38,15 @@ public class LocaisDaJornadaService {
     private final JornadasPainelService painel;
     private final PresencaClient presencas;
     private final AuditoriaService auditoria;
+    private final PontoRastroSalvoRepository trajetos;
 
     public LocaisDaJornadaService(JornadaService jornadas, JornadasPainelService painel, PresencaClient presencas,
-                                  AuditoriaService auditoria) {
+                                  AuditoriaService auditoria, PontoRastroSalvoRepository trajetos) {
         this.jornadas = jornadas;
         this.painel = painel;
         this.presencas = presencas;
         this.auditoria = auditoria;
+        this.trajetos = trajetos;
     }
 
     public LocaisDoDia doAluno(long alunoId, LocalDate data) {
@@ -54,10 +62,39 @@ public class LocaisDaJornadaService {
             Detalhe detalhe = detalhe(passo.leituraId());
             desatualizado |= detalhe.desatualizado();
             incompleto |= detalhe.indisponivel();
+            Double lat = null;
+            Double lon = null;
+            OrigemLocal origem = null;
+            if (passo.tipo() == TipoLeitor.EMBARQUE) {
+                // A API manda a coordenada fixa do leitor, não a do momento: o embarque vem do GPS do ônibus.
+                Optional<PontoRastro> gps = ondeEstavaOOnibus(passo);
+                if (gps.isPresent()) {
+                    lat = gps.get().latitude();
+                    lon = gps.get().longitude();
+                    origem = OrigemLocal.GPS_ONIBUS;
+                }
+            } else if (detalhe.latitude() != null) {
+                lat = detalhe.latitude();
+                lon = detalhe.longitude();
+                origem = OrigemLocal.LEITOR;
+            }
             locais.add(new LocalDoPasso(passo.dataHora(), passo.tipo(), passo.veiculoId(), passo.escolaId(),
-                    passo.estadoResultante(), detalhe.latitude(), detalhe.longitude(), detalhe.statusNotificacao()));
+                    passo.estadoResultante(), lat, lon, origem, detalhe.statusNotificacao()));
         }
         return new LocaisDoDia(alunoId, dia, locais, desatualizado, incompleto);
+    }
+
+    private Optional<PontoRastro> ondeEstavaOOnibus(Passo passo) {
+        if (passo.veiculoId() == null) {
+            return Optional.empty();
+        }
+        long veiculo = passo.veiculoId();
+        LocalDateTime hora = passo.dataHora();
+        PontoRastro antes = trajetos.findFirstByVeiculoIdAndRegistradoEmLessThanEqualOrderByRegistradoEmDesc(
+                veiculo, hora).map(PontoRastroSalvo::paraPonto).orElse(null);
+        PontoRastro depois = trajetos.findFirstByVeiculoIdAndRegistradoEmGreaterThanEqualOrderByRegistradoEmAsc(
+                veiculo, hora).map(PontoRastroSalvo::paraPonto).orElse(null);
+        return PontoNoMomento.escolher(hora, antes, depois);
     }
 
     private Detalhe detalhe(Long leituraId) {
@@ -97,12 +134,21 @@ public class LocaisDaJornadaService {
     /**
      * Um passo da jornada com o local da leitura.
      *
-     * @param latitude          nula quando a leitura não trouxe coordenada válida
+     * @param latitude          nula quando não há local confiável (embarque sem trajeto do ônibus guardado)
+     * @param origemLocal       de onde veio o local; nula sem local
      * @param statusNotificacao situação do aviso ao responsável, como a API descreve
      */
     public record LocalDoPasso(LocalDateTime dataHora, TipoLeitor tipo, Long veiculoId, Long escolaId,
                                EstadoJornada estadoResultante, Double latitude, Double longitude,
-                               String statusNotificacao) {
+                               OrigemLocal origemLocal, String statusNotificacao) {
+    }
+
+    /** De onde veio o local de um passo. */
+    public enum OrigemLocal {
+        /** Posição do ônibus na hora do embarque, pelo trajeto do rastreador. */
+        GPS_ONIBUS,
+        /** Coordenada que a API manda com a leitura (no leitor da escola, a própria escola). */
+        LEITOR
     }
 
     /**

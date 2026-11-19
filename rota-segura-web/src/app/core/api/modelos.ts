@@ -555,7 +555,9 @@ export interface AnaliseFrota {
   incompleto: boolean;
 }
 
-/** Um passo da jornada com o local da leitura (nulo quando o leitor não mandou coordenada). */
+export type OrigemLocal = 'GPS_ONIBUS' | 'LEITOR';
+
+/** Um passo da jornada com o local (nulo quando não há local confiável). */
 export interface LocalDoPasso {
   dataHora: string;
   tipo: TipoLeitor;
@@ -564,6 +566,8 @@ export interface LocalDoPasso {
   estadoResultante: EstadoJornada;
   latitude: number | null;
   longitude: number | null;
+  /** GPS_ONIBUS: posição do ônibus na hora do embarque; LEITOR: coordenada da leitura (escola). */
+  origemLocal: OrigemLocal | null;
   /** Situação do aviso ao responsável, como a API descreve. */
   statusNotificacao: string | null;
 }

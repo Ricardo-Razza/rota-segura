@@ -75,6 +75,19 @@ public final class RastroDoDia {
         return novoPonto ? Mudanca.NOVO_PONTO : Mudanca.POSICAO;
     }
 
+    /**
+     * Recupera o trajeto do dia guardado no banco (ex.: depois de reiniciar o backend). Só vale para um
+     * rastro ainda vazio; a posição atual e a cerca voltam com a próxima leitura do rastreador.
+     */
+    public void restaurar(List<PontoRastro> salvos, LocalDate hoje) {
+        if (dia != null || !pontos.isEmpty()) {
+            return;
+        }
+        dia = hoje;
+        List<PontoRastro> deHoje = salvos.stream().filter(p -> p.em().toLocalDate().equals(hoje)).toList();
+        deHoje.stream().skip(Math.max(0, deHoje.size() - maxPontos)).forEach(pontos::addLast);
+    }
+
     public PosicaoVeiculo atual() {
         return atual;
     }

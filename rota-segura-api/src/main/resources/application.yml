@@ -80,6 +80,8 @@ rota-segura:
     # Novo ponto no rastro só depois de andar isso; teto de pontos guardados por veículo no dia.
     distancia-minima-m: 15
     max-pontos-rastro: 3000
+    # Trajeto guardado no banco (para achar o local de cada embarque); depois disso é apagado.
+    retencao: ${ROTA_RASTREAMENTO_RETENCAO:90d}
   alertas:
     avaliacao-habilitada: ${ROTA_ALERTAS_HABILITADOS:true}
     intervalo: 30s

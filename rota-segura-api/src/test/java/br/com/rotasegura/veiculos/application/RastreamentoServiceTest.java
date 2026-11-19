@@ -19,6 +19,8 @@ import br.com.rotasegura.shared.integration.ColecaoPaginada;
 import br.com.rotasegura.shared.integration.ResultadoCache;
 import br.com.rotasegura.veiculos.application.RastreamentoService.PosicaoAoVivo;
 import br.com.rotasegura.veiculos.application.RastreamentoService.RastreioVeiculo;
+import br.com.rotasegura.veiculos.domain.PontoRastroSalvo;
+import br.com.rotasegura.veiculos.domain.PontoRastroSalvoRepository;
 import br.com.rotasegura.veiculos.integration.DadosVeiculoDto;
 import br.com.rotasegura.veiculos.integration.DadosVeiculoDto.Atributos;
 import br.com.rotasegura.veiculos.integration.DadosVeiculoDto.LocalizacaoDto;
@@ -44,6 +46,7 @@ class RastreamentoServiceTest {
     private final DispositivosClient dispositivos = mock(DispositivosClient.class);
     private final CentralDeEventos eventos = mock(CentralDeEventos.class);
     private final JornadaProperties jornada = mock(JornadaProperties.class);
+    private final PontoRastroSalvoRepository salvos = mock(PontoRastroSalvoRepository.class);
     private RastreamentoService servico;
 
     @BeforeEach
@@ -51,7 +54,7 @@ class RastreamentoServiceTest {
         when(jornada.zona()).thenReturn(ZoneId.of("America/Sao_Paulo"));
         servico = new RastreamentoService(veiculos, dispositivos, eventos, mock(EscopoService.class),
                 Clock.fixed(AGORA, ZoneOffset.UTC), jornada,
-                new RastreamentoProperties(true, null, 300, null, null, null, null));
+                new RastreamentoProperties(true, null, 300, null, null, null, null, null), salvos);
         when(veiculos.listarTodos()).thenReturn(atual(List.of(
                 new VeiculoDto("7", "AAA0A07", null, null, "R-7", null, null, "P-07"),
                 new VeiculoDto("8", "BBB0B08", null, null, "R-8", null, null, "P-08"),
@@ -119,6 +122,45 @@ class RastreamentoServiceTest {
         assertThat(r.falhando()).isTrue();
         assertThat(r.atrasada()).as("posição de 30 min atrás").isTrue();
         assertThat(r.posicao()).isNotNull();
+    }
+
+    @Test
+    void pontoNovoDoTrajetoVaiParaOBancoEPosicaoRepetidaNao() {
+        when(veiculos.dados(7)).thenReturn(dados(-10.01, "2026-03-10T07:59:55-03:00", 0.0));
+
+        servico.atualizar();
+        servico.atualizar();
+
+        ArgumentCaptor<PontoRastroSalvo> salvo = ArgumentCaptor.forClass(PontoRastroSalvo.class);
+        verify(salvos, times(1)).save(salvo.capture());
+        assertThat(salvo.getValue().getVeiculoId()).isEqualTo(7L);
+        assertThat(salvo.getValue().getRegistradoEm()).isEqualTo(LocalDateTime.of(2026, 3, 10, 7, 59, 55));
+    }
+
+    @Test
+    void depoisDeReiniciarORastroDeHojeVoltaDoBanco() {
+        when(salvos.findByVeiculoIdAndRegistradoEmBetweenOrderByRegistradoEmAsc(eq(7L), any(), any()))
+                .thenReturn(List.of(new PontoRastroSalvo(7, LocalDateTime.of(2026, 3, 10, 7, 30), -10.03, -50.0)));
+        when(veiculos.dados(7)).thenReturn(dados(-10.01, "2026-03-10T07:59:55-03:00", 0.0));
+
+        servico.atualizar();
+
+        assertThat(servico.todos().get(7L).rastro()).hasSize(2);
+    }
+
+    @Test
+    void falhaAoSalvarNoBancoNaoParaOTempoReal() {
+        when(salvos.save(any())).thenThrow(new IllegalStateException("banco fora (fictício)"));
+        when(veiculos.dados(7)).thenReturn(dados(-10.01, "2026-03-10T07:59:55-03:00", 0.0));
+
+        assertThat(servico.atualizar()).isEqualTo(1);
+        assertThat(servico.todos().get(7L).rastro()).hasSize(1);
+    }
+
+    @Test
+    void limpezaApagaOQuePassouDe90Dias() {
+        when(salvos.apagarAntesDe(LocalDateTime.of(2025, 12, 10, 8, 0))).thenReturn(3);
+        assertThat(servico.apagarVencidos()).isEqualTo(3);
     }
 
     private static DadosVeiculoDto dados(double latitude, String fixTime, double nos) {

@@ -16,6 +16,7 @@ function passo(tipo: LocalDoPasso['tipo'], dataHora: string, extra: Partial<Loca
     estadoResultante: tipo === 'EMBARQUE' ? 'EMBARCADO' : 'NA_ESCOLA',
     latitude: -10.1,
     longitude: -50.1,
+    origemLocal: tipo === 'EMBARQUE' ? 'GPS_ONIBUS' : 'LEITOR',
     statusNotificacao: 'Enviada',
     ...extra,
   } as LocalDoPasso;
@@ -76,7 +77,7 @@ describe('mapa da jornada', () => {
     return fixture;
   }
 
-  it('leitores sem GPS: mostra "sem localização" e o aviso ao responsável, sem buscar rastro', async () => {
+  it('sem trajeto guardado: mostra "local exato indisponível" e o aviso ao responsável, sem buscar rastro', async () => {
     const fixture = montar('2026-03-10');
     http
       .expectOne((r) => r.url.endsWith('/alunos/101/jornadas/2026-03-10/locais'))
@@ -94,6 +95,7 @@ describe('mapa da jornada', () => {
 
     const texto = fixture.nativeElement.textContent as string;
     expect(texto).toContain('Sem localização');
+    expect(texto).toContain('local exato indisponível');
     expect(texto).toContain('aviso ao responsável: Enviada');
     expect(texto).toContain('aviso ao responsável: —');
     // Dia passado: o backend não guarda rastro antigo, então nem pergunta.
@@ -111,6 +113,7 @@ describe('mapa da jornada', () => {
     http.expectOne((r) => r.url.endsWith('/veiculos/7/rastreamento')).flush({ rastro: [] });
     await fixture.whenStable();
     expect(fixture.nativeElement.textContent).not.toContain('Sem localização');
+    expect(fixture.nativeElement.textContent).toContain('pelo GPS do ônibus');
     http.verify();
   });
 

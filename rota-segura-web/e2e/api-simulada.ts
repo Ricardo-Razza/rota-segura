@@ -513,7 +513,7 @@ export async function simularApi(page: Page): Promise<ApiSimulada> {
     }
     const locais = caminho.match(/^\/alunos\/(\d+)\/jornadas\/([\d-]+)\/locais$/);
     if (locais) {
-      // Coordenadas inventadas (ponto qualquer no centro do mapa); a chegada vem sem GPS.
+      // Coordenadas inventadas: o embarque vem do GPS do ônibus; a chegada, sem local.
       const j = JORNADAS.find((x) => x.aluno.id === Number(locais[1]))?.jornada;
       return json({
         alunoId: Number(locais[1]),
@@ -526,6 +526,7 @@ export async function simularApi(page: Page): Promise<ApiSimulada> {
           estadoResultante: p.estadoResultante,
           latitude: i === 0 ? -15.7801 : null,
           longitude: i === 0 ? -47.9292 : null,
+          origemLocal: i === 0 ? 'GPS_ONIBUS' : null,
           statusNotificacao: i === 0 ? 'Enviado' : null,
         })),
         desatualizado: false,

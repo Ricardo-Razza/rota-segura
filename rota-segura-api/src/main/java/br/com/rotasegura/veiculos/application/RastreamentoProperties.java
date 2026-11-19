@@ -14,11 +14,12 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param limitePosicaoAtrasada posição do GPS mais antiga que isso aparece como "atrasada" no painel
  * @param distanciaMinimaM    deslocamento mínimo para um novo ponto entrar no rastro
  * @param maxPontosRastro     teto de pontos guardados por veículo no dia (os mais antigos saem)
+ * @param retencao            por quanto tempo o trajeto fica no banco antes de ser apagado
  */
 @ConfigurationProperties("rota-segura.rastreamento")
 public record RastreamentoProperties(Boolean habilitado, Duration intervalo, Integer raioEscolaM,
                                      Duration tempoDesembarque, Duration limitePosicaoAtrasada,
-                                     Integer distanciaMinimaM, Integer maxPontosRastro) {
+                                     Integer distanciaMinimaM, Integer maxPontosRastro, Duration retencao) {
 
     public RastreamentoProperties {
         habilitado = habilitado == null || habilitado;
@@ -28,5 +29,6 @@ public record RastreamentoProperties(Boolean habilitado, Duration intervalo, Int
         limitePosicaoAtrasada = limitePosicaoAtrasada == null ? Duration.ofMinutes(2) : limitePosicaoAtrasada;
         distanciaMinimaM = distanciaMinimaM == null ? 15 : distanciaMinimaM;
         maxPontosRastro = maxPontosRastro == null ? 3000 : maxPontosRastro;
+        retencao = retencao == null ? Duration.ofDays(90) : retencao;
     }
 }

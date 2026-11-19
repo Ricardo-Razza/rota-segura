@@ -42,6 +42,20 @@ class RastroDoDiaTest {
     }
 
     @Test
+    void restauraSoOTrajetoDeHojeERespeitaOTeto() {
+        rastro.restaurar(java.util.List.of(
+                new RastroDoDia.PontoRastro(-10.03, -50.0, HOJE.minusDays(1).atTime(17, 0)),
+                new RastroDoDia.PontoRastro(-10.02, -50.0, HOJE.atTime(6, 50)),
+                new RastroDoDia.PontoRastro(-10.019, -50.0, HOJE.atTime(6, 51))), HOJE);
+        assertThat(rastro.pontos()).extracting(RastroDoDia.PontoRastro::em)
+                .containsExactly(HOJE.atTime(6, 50), HOJE.atTime(6, 51));
+
+        // Depois de restaurado, a próxima posição continua o mesmo trajeto.
+        assertThat(rastro.registrar(pos(-10.018, "06:52:00"), HOJE, ESCOLA)).isEqualTo(Mudanca.NOVO_PONTO);
+        assertThat(rastro.pontos()).hasSize(3);
+    }
+
+    @Test
     void guardaSoOsPontosMaisRecentes() {
         for (int i = 0; i < 6; i++) {
             rastro.registrar(pos(-10.02 + i * 0.001, "07:0" + i + ":00"), HOJE, ESCOLA);

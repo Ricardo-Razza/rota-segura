@@ -32,6 +32,7 @@ test('login, jornada, perfil do aluno, alerta resolvido e CSV exportado', async 
   // Onde embarcou: mapa com o ponto do leitor e o aviso ao responsável; só ids e data na URL
   await painel.getByRole('heading', { name: 'Onde embarcou e chegou' }).scrollIntoViewIfNeeded();
   await expect(painel.getByText('aviso ao responsável: Enviado')).toBeVisible();
+  await expect(painel.getByText('pelo GPS do ônibus')).toBeVisible();
   await expect(painel.locator('.rs-marcador-jornada')).toHaveCount(1);
   expect(api.chamadas.some((c) => /^GET \/alunos\/101\/jornadas\/[\d-]+\/locais$/.test(c))).toBe(
     true,

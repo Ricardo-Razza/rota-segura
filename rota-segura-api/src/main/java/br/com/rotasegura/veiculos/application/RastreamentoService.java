@@ -9,6 +9,8 @@ import br.com.rotasegura.shared.erro.AcessoNegadoException;
 import br.com.rotasegura.shared.erro.RecursoNaoEncontradoException;
 import br.com.rotasegura.shared.integration.Conversoes;
 import br.com.rotasegura.veiculos.domain.Geo;
+import br.com.rotasegura.veiculos.domain.PontoRastroSalvo;
+import br.com.rotasegura.veiculos.domain.PontoRastroSalvoRepository;
 import br.com.rotasegura.veiculos.domain.PosicaoVeiculo;
 import br.com.rotasegura.veiculos.domain.RastroDoDia;
 import br.com.rotasegura.veiculos.domain.RastroDoDia.Cerca;
@@ -37,8 +39,13 @@ import org.springframework.stereotype.Service;
  * de cada veículo com rastreador ({@code GET /api/veiculos/{id}/dados}), guarda o rastro do dia em memória,
  * calcula a cerca virtual da escola de destino e publica {@value #EVENTO_POSICAO} no tempo real.
  *
- * <p>LGPD: o rastro revela por onde a rota passa (perto da casa das crianças). Fica só em memória, só do dia,
- * é entregue só a quem tem o veículo no escopo e nunca vai para log (o log leva só o id do veículo).
+ * <p>Cada ponto novo do rastro também vai para o banco ({@code ponto_rastro}), para achar onde o ônibus estava
+ * em cada embarque e para o rastro do dia sobreviver a um reinício. O que passa da retenção (padrão 90 dias)
+ * é apagado todo dia.
+ *
+ * <p>LGPD: o rastro revela por onde a rota passa (perto da casa das crianças). Guarda só veículo, hora e
+ * posição (nenhum dado de aluno), é entregue só a quem tem o veículo no escopo e nunca vai para log (o log
+ * leva só o id do veículo).
  */
 @Service
 public class RastreamentoService {
@@ -54,12 +61,13 @@ public class RastreamentoService {
     private final Clock relogio;
     private final JornadaProperties jornada;
     private final RastreamentoProperties propriedades;
+    private final PontoRastroSalvoRepository salvos;
 
     private final Map<Long, Acompanhamento> acompanhados = new HashMap<>();
 
     public RastreamentoService(VeiculosClient veiculos, DispositivosClient dispositivos, CentralDeEventos eventos,
                                EscopoService escopo, Clock relogio, JornadaProperties jornada,
-                               RastreamentoProperties propriedades) {
+                               RastreamentoProperties propriedades, PontoRastroSalvoRepository salvos) {
         this.veiculos = veiculos;
         this.dispositivos = dispositivos;
         this.eventos = eventos;
@@ -67,6 +75,18 @@ public class RastreamentoService {
         this.relogio = relogio;
         this.jornada = jornada;
         this.propriedades = propriedades;
+        this.salvos = salvos;
+    }
+
+    /** Apaga do banco o trajeto mais antigo que a retenção (padrão 90 dias), uma vez por dia. */
+    @Scheduled(cron = "${rota-segura.rastreamento.cron-limpeza:0 30 3 * * *}",
+            zone = "${rota-segura.jornada.zona:America/Sao_Paulo}")
+    public int apagarVencidos() {
+        int apagados = salvos.apagarAntesDe(agora().minus(propriedades.retencao()));
+        if (apagados > 0) {
+            LOG.info("Trajeto antigo apagado. pontos={}", apagados);
+        }
+        return apagados;
     }
 
     @Scheduled(initialDelayString = "PT5S", fixedDelayString = "${rota-segura.rastreamento.intervalo:5s}")
@@ -164,18 +184,45 @@ public class RastreamentoService {
 
     private synchronized boolean registrar(long id, PosicaoVeiculo posicao, Cerca cerca) {
         LocalDateTime agora = agora();
-        Acompanhamento a = acompanhados.computeIfAbsent(id, v -> new Acompanhamento(
-                new RastroDoDia(propriedades.maxPontosRastro(), propriedades.distanciaMinimaM())));
+        Acompanhamento a = acompanhados.computeIfAbsent(id, v -> new Acompanhamento(restaurado(v, agora)));
         a.cerca = cerca;
         a.falhando = false;
         Mudanca mudanca = a.rastro.registrar(posicao, agora.toLocalDate(), cerca);
         if (mudanca == Mudanca.NENHUMA) {
             return false;
         }
+        if (mudanca == Mudanca.NOVO_PONTO) {
+            salvar(id, posicao);
+        }
         RastreioVeiculo semRastro = a.retrato(id, agora, false);
         eventos.publicar(EVENTO_POSICAO, new PosicaoAoVivo(semRastro, mudanca == Mudanca.NOVO_PONTO),
                 semRastro.escolaId(), id, true);
         return true;
+    }
+
+    /** Rastro novo de um veículo, já com o trajeto de hoje que estiver no banco (ex.: depois de reiniciar). */
+    private RastroDoDia restaurado(long id, LocalDateTime agora) {
+        RastroDoDia rastro = new RastroDoDia(propriedades.maxPontosRastro(), propriedades.distanciaMinimaM());
+        try {
+            LocalDateTime inicioDoDia = agora.toLocalDate().atStartOfDay();
+            List<PontoRastro> deHoje = salvos
+                    .findByVeiculoIdAndRegistradoEmBetweenOrderByRegistradoEmAsc(id, inicioDoDia, agora)
+                    .stream().map(PontoRastroSalvo::paraPonto).toList();
+            rastro.restaurar(deHoje, agora.toLocalDate());
+        } catch (RuntimeException e) {
+            LOG.warn("Trajeto do dia não pôde ser lido do banco. veiculo={} motivo={}", id,
+                    e.getClass().getSimpleName());
+        }
+        return rastro;
+    }
+
+    /** Guarda o ponto no banco; falha aqui não para o tempo real (o ponto continua no rastro em memória). */
+    private void salvar(long id, PosicaoVeiculo posicao) {
+        try {
+            salvos.save(new PontoRastroSalvo(id, posicao.registradaEm(), posicao.latitude(), posicao.longitude()));
+        } catch (RuntimeException e) {
+            LOG.warn("Ponto do trajeto não foi salvo. veiculo={} motivo={}", id, e.getClass().getSimpleName());
+        }
     }
 
     private synchronized void marcarFalha(long id) {

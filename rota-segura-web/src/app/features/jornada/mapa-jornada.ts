@@ -29,9 +29,10 @@ function svgIcone(nome: NomeIcone): string {
 }
 
 /**
- * Onde o aluno pegou o ônibus e onde chegou, num mapa pequeno com o trecho do rastro do ônibus (só hoje:
- * o backend guarda o rastro do dia). O local vem do leitor facial; leitor sem GPS aparece como
- * "sem localização". Nada de nome no mapa, e as coordenadas não vão para a URL.
+ * Onde o aluno pegou o ônibus e onde chegou, num mapa pequeno com o trecho do rastro do ônibus (só hoje).
+ * O embarque é a posição do ônibus na hora da leitura (trajeto guardado no backend por 90 dias); sem
+ * trajeto, aparece "local exato indisponível" em vez de um ponto errado. A chegada é o ponto do leitor da
+ * escola. Nada de nome no mapa, e as coordenadas não vão para a URL.
  */
 @Component({
   selector: 'rs-mapa-jornada',
@@ -58,7 +59,9 @@ function svgIcone(nome: NomeIcone): string {
       @if (l.passos.length === 0) {
         <p class="rs-nota">Nenhuma leitura neste dia.</p>
       } @else if (!temPontos()) {
-        <p class="rs-nota sem-local">Sem localização: os leitores não enviaram coordenadas.</p>
+        <p class="rs-nota sem-local">
+          Sem localização: não há trajeto do ônibus guardado para esse horário.
+        </p>
       }
       @if (l.incompleto || l.desatualizado) {
         <p class="rs-nota">
@@ -77,7 +80,9 @@ function svgIcone(nome: NomeIcone): string {
             <span>
               {{ rotuloPasso(p.tipo) }}
               @if (p.latitude === null) {
-                <span class="rs-nota">· sem localização</span>
+                <span class="rs-nota">· local exato indisponível</span>
+              } @else if (p.origemLocal === 'GPS_ONIBUS') {
+                <span class="rs-nota">· pelo GPS do ônibus</span>
               }
               <span class="rs-nota">· aviso ao responsável: {{ p.statusNotificacao || '—' }}</span>
             </span>

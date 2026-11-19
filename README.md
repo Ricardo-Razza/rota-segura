@@ -68,6 +68,7 @@ Todas estão comentadas em [`.env.example`](.env.example). Nenhuma chave fica no
 | `ROTA_ALERTAS_HABILITADOS` | não | Liga o ciclo de alertas de 30 s |
 | `ROTA_RASTREAMENTO_HABILITADO` | não | Liga o GPS ao vivo dos veículos (padrão `true`) |
 | `ROTA_RASTREAMENTO_INTERVALO` | não | Intervalo entre consultas ao rastreador (padrão `5s`) |
+| `ROTA_RASTREAMENTO_RETENCAO` | não | Por quanto tempo o trajeto dos ônibus fica no banco antes de ser apagado (padrão `90d`) |
 | `ROTA_INDICE_RESPONSAVEIS` | não | Liga o índice aluno → responsáveis em segundo plano |
 | `ROTA_SWAGGER_HABILITADO` | não | Swagger UI do painel (`/swagger-ui.html`) |
 | `SPRING_MAIL_*` | não | SMTP dos relatórios semanais; sem host, o envio é ignorado |
