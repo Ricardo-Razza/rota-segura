@@ -32,7 +32,8 @@ jobs:
 
   web:
     name: Frontend (testes, build, e2e)
-    runs-on: ubuntu-latest
+    # Fixo: o Playwright 1.55 instala dependências só nas versões de Ubuntu que conhece.
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: rota-segura-web
