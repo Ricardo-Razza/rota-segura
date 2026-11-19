@@ -1,6 +1,26 @@
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { JornadaDoDia } from '../../core/api/modelos';
 import { EstadoJornada } from '../../shared/ui/tom';
+import { Alunos } from './alunos';
 import { avaliarRisco, janelasDeHistorico, ultimosDias } from './alunos.logica';
+
+describe('Alunos (tela)', () => {
+  it('pede a primeira página como 1 (o backend recusa 0 com 400)', async () => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
+    });
+    const http = TestBed.inject(HttpTestingController);
+    const fixture = TestBed.createComponent(Alunos);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const pedidos = http.match((r) => r.url === '/api/v1/alunos');
+    expect(pedidos).toHaveLength(1);
+    expect(pedidos[0].request.params.get('pagina')).toBe('1');
+  });
+});
 
 function dia(data: string, estado: EstadoJornada): JornadaDoDia {
   return {

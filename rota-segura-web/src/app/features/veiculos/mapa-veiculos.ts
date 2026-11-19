@@ -106,7 +106,9 @@ export class MapaVeiculos implements OnDestroy {
 
   constructor() {
     afterNextRender(async () => {
-      this.leaflet = await import('leaflet');
+      // Leaflet é CommonJS: no build de produção a API vem em `default`; no servidor de dev, no próprio módulo.
+      const modulo = (await import('leaflet')) as typeof L & { default?: typeof L };
+      this.leaflet = modulo.default ?? modulo;
       const Lf = this.leaflet;
       this.mapa = Lf.map(this.elemento().nativeElement, { zoomControl: true }).setView(
         CONFIG_MAPA.centro,

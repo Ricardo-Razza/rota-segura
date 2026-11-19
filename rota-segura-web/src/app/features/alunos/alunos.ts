@@ -230,7 +230,8 @@ export class Alunos {
 
   private readonly paginas = signal<AlunoComSituacao[]>([]);
   private readonly totalServidor = signal(0);
-  private readonly proximaPagina = signal(0);
+  /** O backend numera as páginas a partir de 1. */
+  private readonly proximaPagina = signal(1);
   private readonly estadoBusca = signal<'carregando' | 'ok' | 'erro'>('carregando');
   private readonly desatualizado = signal(false);
   protected readonly atualizadoEm = signal<Date | null>(null);
@@ -329,7 +330,7 @@ export class Alunos {
     this.requisicao?.unsubscribe();
     this.carregandoMais = false;
     this.paginas.set([]);
-    this.proximaPagina.set(0);
+    this.proximaPagina.set(1);
     this.estadoBusca.set('carregando');
     this.carregarPagina();
   }
@@ -381,7 +382,7 @@ export class Alunos {
       next: (lista) => {
         this.carregandoMais = false;
         this.paginas.update((atuais) =>
-          pagina === 0 ? lista.alunos.itens : [...atuais, ...lista.alunos.itens],
+          pagina === 1 ? lista.alunos.itens : [...atuais, ...lista.alunos.itens],
         );
         this.totalServidor.set(lista.alunos.total);
         this.proximaPagina.set(pagina + 1);
@@ -391,7 +392,7 @@ export class Alunos {
       },
       error: () => {
         this.carregandoMais = false;
-        if (pagina === 0) {
+        if (pagina === 1) {
           this.estadoBusca.set('erro');
         }
       },
