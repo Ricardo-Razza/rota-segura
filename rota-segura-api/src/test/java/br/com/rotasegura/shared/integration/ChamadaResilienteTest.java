@@ -20,14 +20,20 @@ import org.junit.jupiter.api.Test;
 /** Cache com revalidação em segundo plano e busca única por chave (sem API real: só fornecedores locais). */
 class ChamadaResilienteTest {
 
+    /** TTL curto só para ALUNOS (cadastro), usado no teste de vencimento. */
     private static final Duration TTL = Duration.ofMillis(100);
+    /**
+     * PRESENCA (tempo real) com TTL longo: no teste de concorrência nenhuma thread lenta do CI pode chegar
+     * depois do vencimento e disparar uma revalidação legítima, que contaria como segunda busca.
+     */
+    private static final Duration TTL_LONGO = Duration.ofHours(1);
 
     private ChamadaResiliente chamada;
     private ExecutorService threads;
 
     @BeforeEach
     void criar() {
-        var props = new CacheProperties(TTL, TTL, Duration.ofHours(1), Duration.ofMinutes(30));
+        var props = new CacheProperties(TTL, TTL_LONGO, Duration.ofHours(1), Duration.ofMinutes(30));
         chamada = new ChamadaResiliente(CircuitBreakerRegistry.ofDefaults(), RetryRegistry.ofDefaults(), props,
                 Clock.systemUTC(), new SimpleMeterRegistry());
         threads = Executors.newFixedThreadPool(4);
@@ -53,12 +59,13 @@ class ChamadaResilienteTest {
             aguardar(liberar);
             return "v" + versao.incrementAndGet();
         });
-        assertThat(Duration.ofNanos(System.nanoTime() - inicio)).isLessThan(Duration.ofMillis(500));
+        // A atualização está presa no latch (até 5 s): responder bem antes disso prova que não esperou.
+        assertThat(Duration.ofNanos(System.nanoTime() - inicio)).isLessThan(Duration.ofSeconds(2));
         assertThat(vencida.valor()).isEqualTo("v1");
         assertThat(vencida.obtidoEm()).isEqualTo(primeira.obtidoEm());
 
         liberar.countDown();
-        long limite = System.currentTimeMillis() + 2_000;
+        long limite = System.currentTimeMillis() + 10_000;
         Object atual = vencida.valor();
         while (!"v2".equals(atual) && System.currentTimeMillis() < limite) {
             Thread.sleep(20);
@@ -79,10 +86,10 @@ class ChamadaResilienteTest {
                 return "dados";
             }).valor());
         }
-        Thread.sleep(200);
+        Thread.sleep(300);
         todosChegaram.countDown();
         for (Future<?> pedido : pedidos) {
-            assertThat(pedido.get(2, TimeUnit.SECONDS)).isEqualTo("dados");
+            assertThat(pedido.get(10, TimeUnit.SECONDS)).isEqualTo("dados");
         }
         assertThat(buscas).hasValue(1);
     }
