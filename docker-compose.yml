@@ -1,4 +1,4 @@
-# Sobe banco + API + web. Antes: cp .env.example .env e preencha (ROTA_JWT_SECRET, ROTA_API_BASE_URL...).
+# Sobe banco + API + web. Local: cp .env.example .env e preencha. Portainer: cadastre as variáveis na stack.
 # Acesso: http://localhost:8081 (web). A API não é exposta fora da rede do compose.
 name: rota-segura
 
@@ -23,11 +23,35 @@ services:
 
   api:
     build: ./rota-segura-api
-    env_file: .env
+    # Sem env_file: no Portainer (deploy por repositório) não existe .env nem stack.env. Cada variável vem da
+    # substituição ${...} (variáveis da stack no Portainer, ou o .env local no docker compose).
     environment:
+      ROTA_API_BASE_URL: ${ROTA_API_BASE_URL:?defina ROTA_API_BASE_URL}
+      ROTA_API_AUTHORIZATION: ${ROTA_API_AUTHORIZATION:-}
+      ROTA_API_MAX_PAGINAS: ${ROTA_API_MAX_PAGINAS:-200}
+      ROTA_ZONA: ${ROTA_ZONA:-America/Sao_Paulo}
+      ROTA_JANELA_SEM_CHEGADA: ${ROTA_JANELA_SEM_CHEGADA:-40m}
       ROTA_DB_URL: jdbc:mysql://db:3306/rota_segura
-      ROTA_FORWARD_HEADERS: native
+      ROTA_DB_USUARIO: ${ROTA_DB_USUARIO:-rota_segura}
+      ROTA_DB_SENHA: ${ROTA_DB_SENHA:?defina ROTA_DB_SENHA}
+      ROTA_JWT_SECRET: ${ROTA_JWT_SECRET:?defina ROTA_JWT_SECRET}
+      ROTA_COOKIE_SECURE: ${ROTA_COOKIE_SECURE:-true}
       ROTA_CORS_ORIGENS: ${ROTA_CORS_ORIGENS:-http://localhost:8081}
+      ROTA_ADMIN_LOGIN: ${ROTA_ADMIN_LOGIN:-}
+      ROTA_ADMIN_SENHA: ${ROTA_ADMIN_SENHA:-}
+      ROTA_SWAGGER_HABILITADO: ${ROTA_SWAGGER_HABILITADO:-false}
+      ROTA_FORWARD_HEADERS: native
+      ROTA_ALERTAS_HABILITADOS: ${ROTA_ALERTAS_HABILITADOS:-true}
+      ROTA_INDICE_RESPONSAVEIS: ${ROTA_INDICE_RESPONSAVEIS:-true}
+      ROTA_RASTREAMENTO_HABILITADO: ${ROTA_RASTREAMENTO_HABILITADO:-true}
+      ROTA_RASTREAMENTO_INTERVALO: ${ROTA_RASTREAMENTO_INTERVALO:-5s}
+      SPRING_MAIL_HOST: ${SPRING_MAIL_HOST:-}
+      SPRING_MAIL_PORT: ${SPRING_MAIL_PORT:-587}
+      SPRING_MAIL_USERNAME: ${SPRING_MAIL_USERNAME:-}
+      SPRING_MAIL_PASSWORD: ${SPRING_MAIL_PASSWORD:-}
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: ${SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH:-true}
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: ${SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE:-true}
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_FROM: ${SPRING_MAIL_PROPERTIES_MAIL_SMTP_FROM:-}
     depends_on:
       db:
         condition: service_healthy
