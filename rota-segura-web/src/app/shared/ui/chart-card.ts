@@ -70,22 +70,22 @@ export type EstadoCard = 'carregando' | 'vazio' | 'erro' | 'ok' | 'desatualizado
       flex-direction: column;
       height: 100%;
       min-height: 220px;
-      border: 1px solid var(--borda);
-      border-radius: var(--raio);
-      background: var(--superficie);
-      box-shadow: var(--sombra);
+      border: 1px solid var(--vidro-borda);
+      border-radius: var(--raio-vidro);
+      background: var(--vidro);
+      box-shadow: var(--vidro-sombra);
     }
     header {
       display: flex;
       align-items: center;
       gap: 10px;
       flex-wrap: wrap;
-      padding: 12px 16px;
-      border-bottom: 1px solid var(--borda);
+      padding: 16px 20px 6px;
     }
     h2 {
       flex: 1;
-      font-size: 14px;
+      font-size: 16px;
+      font-weight: 800;
     }
     .aviso {
       padding: 2px 8px;

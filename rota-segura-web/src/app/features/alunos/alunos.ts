@@ -140,12 +140,14 @@ const PENDENCIA: Record<TipoPendencia, string> = {
                     {{ item.aluno.escolaNome || '—' }}</span
                   >
                 </span>
-                @if (item.estadoHoje; as e) {
-                  <rs-status-badge [texto]="jornada[e].rotulo" [tom]="jornada[e].tom" />
-                }
-                @if (alertasPorAluno().get(item.aluno.id); as n) {
-                  <rs-status-badge [texto]="n + ' alerta(s)'" tom="critico" />
-                }
+                <span class="selos">
+                  @if (item.estadoHoje; as e) {
+                    <rs-status-badge [texto]="jornada[e].rotulo" [tom]="jornada[e].tom" />
+                  }
+                  @if (alertasPorAluno().get(item.aluno.id); as n) {
+                    <rs-status-badge [texto]="n + ' alerta(s)'" tom="critico" />
+                  }
+                </span>
               </a>
             </cdk-virtual-scroll-viewport>
           }
@@ -193,7 +195,7 @@ const PENDENCIA: Record<TipoPendencia, string> = {
   `,
   styles: `
     .viewport {
-      height: 560px;
+      height: min(560px, 62dvh);
     }
     .linha {
       display: flex;
@@ -213,6 +215,19 @@ const PENDENCIA: Record<TipoPendencia, string> = {
       flex: 1;
       flex-direction: column;
       min-width: 0;
+    }
+    .linha .quem > * {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .selos {
+      display: flex;
+      flex: none;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 4px;
+      max-width: 50%;
     }
   `,
 })

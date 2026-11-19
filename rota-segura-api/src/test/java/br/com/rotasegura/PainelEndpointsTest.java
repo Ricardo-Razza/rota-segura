@@ -112,6 +112,8 @@ class PainelEndpointsTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.escolas[*].id", contains(50)))
                 .andExpect(jsonPath("$.turmas.length()").value(1))
+                .andExpect(jsonPath("$.etapas").isArray())
+                .andExpect(jsonPath("$.turnos").isArray())
                 .andExpect(jsonPath("$.alunos").doesNotExist());
     }
 

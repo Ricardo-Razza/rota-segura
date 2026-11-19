@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
+import { Icone, NomeIcone } from './icone';
 
 export interface Coluna<T> {
   chave: string;
@@ -17,6 +18,7 @@ interface Ordenacao {
 /** Tabela de dados com ordenação por coluna, acessível por teclado e com estado vazio. */
 @Component({
   selector: 'rs-data-table',
+  imports: [Icone],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="rolagem" tabindex="0" role="region" [attr.aria-label]="legenda()">
@@ -37,7 +39,7 @@ interface Ordenacao {
                 @if (coluna.ordenavel !== false) {
                   <button type="button" (click)="ordenarPor(coluna.chave)">
                     {{ coluna.titulo }}
-                    <span aria-hidden="true">{{ seta(coluna.chave) }}</span>
+                    <rs-icone [nome]="seta(coluna.chave)" [tamanho]="14" />
                   </button>
                 } @else {
                   {{ coluna.titulo }}
@@ -67,9 +69,9 @@ interface Ordenacao {
   styles: `
     .rolagem {
       overflow-x: auto;
-      border: 1px solid var(--borda);
-      border-radius: var(--raio);
-      background: var(--superficie);
+      border: 1px solid var(--vidro-borda);
+      border-radius: var(--raio-vidro);
+      background: var(--vidro);
     }
     table {
       width: 100%;
@@ -169,12 +171,12 @@ export class DataTable<T> {
     }
   }
 
-  protected seta(chave: string): string {
+  protected seta(chave: string): NomeIcone {
     const atual = this.ordenacao();
     if (atual?.chave !== chave) {
-      return '↕';
+      return 'ordenar';
     }
-    return atual.sentido === 'asc' ? '↑' : '↓';
+    return atual.sentido === 'asc' ? 'sobe' : 'seta';
   }
 
   protected ariaSort(coluna: Coluna<T>): 'ascending' | 'descending' | 'none' | null {

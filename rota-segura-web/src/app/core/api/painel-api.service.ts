@@ -5,6 +5,9 @@ import { API } from '../auth/auth.models';
 import { SEM_TOAST_DE_ERRO } from '../auth/erro.interceptor';
 import {
   Agendamento,
+  AnaliseFrequencia,
+  AnaliseFrota,
+  AnaliseMatriculas,
   Alerta,
   DetalheVeiculo,
   IndicadoresSensiveis,
@@ -203,5 +206,27 @@ export class PainelApi {
 
   cancelarAgendamento(id: number): Observable<void> {
     return this.http.delete<void>(`${API}/relatorios/agendados/${id}`);
+  }
+
+  // ----- Análises (filtros só com ids, datas e enums)
+  analiseFrequencia(filtros: Parametros): Observable<AnaliseFrequencia> {
+    return this.http.get<AnaliseFrequencia>(`${API}/analises/frequencia`, {
+      ...LEITURA,
+      params: params(filtros),
+    });
+  }
+
+  analiseMatriculas(filtros: Parametros): Observable<AnaliseMatriculas> {
+    return this.http.get<AnaliseMatriculas>(`${API}/analises/matriculas`, {
+      ...LEITURA,
+      params: params(filtros),
+    });
+  }
+
+  analiseFrota(filtros: Parametros): Observable<AnaliseFrota> {
+    return this.http.get<AnaliseFrota>(`${API}/analises/frota`, {
+      ...LEITURA,
+      params: params(filtros),
+    });
   }
 }

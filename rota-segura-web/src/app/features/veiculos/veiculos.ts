@@ -36,14 +36,15 @@ import {
 type Aba = 'veiculos' | 'leitores';
 
 /** Veículos (status do dia, mapa, detalhe) e saúde dos leitores faciais. Tudo somente leitura. */
+import { Icone } from '../../shared/ui/icone';
 @Component({
   selector: 'rs-veiculos',
-  imports: [ChartCard, FilterChips, StatusBadge, MapaVeiculos, IndicadorConexao],
+  imports: [Icone, ChartCard, FilterChips, StatusBadge, MapaVeiculos, IndicadorConexao],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="rs-pagina">
       <div class="rs-pagina__topo">
-        <h1>Veículos</h1>
+        <h1>Frota</h1>
         <div class="rs-pagina__acoes"><rs-indicador-conexao /></div>
       </div>
 
@@ -54,7 +55,7 @@ type Aba = 'veiculos' | 'leitores';
           [attr.aria-selected]="aba() === 'veiculos'"
           (click)="aba.set('veiculos')"
         >
-          Veículos
+          Mapa ao vivo
         </button>
         <button
           type="button"
@@ -91,8 +92,9 @@ type Aba = 'veiculos' | 'leitores';
           />
         </div>
 
-        <div class="rs-grade rs-grade--2">
+        <div class="frota">
           <rs-chart-card
+            class="frota__lista"
             titulo="Veículos hoje"
             [estado]="status.estado()"
             [atualizadoEm]="status.atualizadoEm()"
@@ -148,11 +150,13 @@ type Aba = 'veiculos' | 'leitores';
           </rs-chart-card>
 
           <rs-chart-card
+            class="frota__mapa"
             titulo="Mapa ao vivo"
             [estado]="status.estado()"
             (tentarDeNovo)="status.recarregar()"
           >
             <rs-mapa-veiculos
+              altura="clamp(380px, calc(100dvh - 400px), 720px)"
               [veiculos]="filtrados()"
               [rastreios]="rastreios()"
               [raioCercaM]="rastreio.dados()?.raioCercaM ?? 0"
@@ -193,7 +197,7 @@ type Aba = 'veiculos' | 'leitores';
               (click)="selecionar(-1)"
               aria-label="Fechar detalhe"
             >
-              ✕
+              <rs-icone nome="x" />
             </button>
             @if (detalhe.dados(); as d) {
               <dl class="resumo">
@@ -326,6 +330,23 @@ type Aba = 'veiculos' | 'leitores';
     </div>
   `,
   styles: `
+    .frota {
+      display: grid;
+      grid-template-columns: minmax(300px, 420px) 1fr;
+      gap: 16px;
+      align-items: start;
+    }
+    .frota__mapa {
+      order: 2;
+    }
+    @media (max-width: 1000px) {
+      .frota {
+        grid-template-columns: 1fr;
+      }
+      .frota__mapa {
+        order: -1;
+      }
+    }
     .cards {
       list-style: none;
       margin: 0;
@@ -333,7 +354,7 @@ type Aba = 'veiculos' | 'leitores';
       display: flex;
       flex-direction: column;
       gap: 8px;
-      max-height: 460px;
+      max-height: clamp(380px, calc(100dvh - 400px), 720px);
       overflow-y: auto;
     }
     .cartao {
@@ -342,11 +363,14 @@ type Aba = 'veiculos' | 'leitores';
       gap: 4px;
       width: 100%;
       padding: 10px;
-      border: 1px solid var(--borda);
-      border-radius: var(--raio-sm);
-      background: var(--superficie);
+      border: 1px solid var(--vidro-borda);
+      border-radius: 14px;
+      background: var(--neutro-fundo);
       text-align: left;
       cursor: pointer;
+    }
+    .cartao:hover {
+      border-color: var(--borda-forte);
     }
     .cartao--ativo {
       border-color: var(--marca-secundaria);

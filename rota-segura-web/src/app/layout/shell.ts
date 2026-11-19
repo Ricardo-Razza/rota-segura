@@ -1,6 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  ElementRef,
   HostListener,
   OnDestroy,
   computed,
@@ -9,186 +10,256 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { filter, map } from 'rxjs';
 import { AlertasAoVivo } from '../core/alertas/alertas-ao-vivo.service';
 import { OpcoesDeFiltro } from '../core/api/modelos';
 import { PainelApi } from '../core/api/painel-api.service';
-import { BuscaGlobal } from './busca-global';
 import { ROTULO_PERFIL } from '../core/auth/auth.models';
 import { AuthService } from '../core/auth/auth.service';
-import { FiltrosStore } from '../core/filtros/filtros.store';
+import { FiltrosGlobais, FiltrosStore } from '../core/filtros/filtros.store';
 import { IndicadorConexao } from '../core/sse/indicador-conexao';
 import { SseService } from '../core/sse/sse.service';
 import { TemaService } from '../core/tema/tema.service';
+import { Icone, NomeIcone } from '../shared/ui/icone';
+import { BuscaGlobal } from './busca-global';
+import { PainelFiltros } from './painel-filtros';
 
-interface ItemDeMenu {
+interface Destino {
   rota: string;
   rotulo: string;
-  sigla: string;
+  icone: NomeIcone;
+  /** Outras rotas que contam como "dentro" deste destino (para marcar o menu). */
+  inclui?: string[];
 }
 
-const CHAVE_MENU = 'rs.menu-recolhido';
+interface ChipDeFiltro {
+  chave: keyof FiltrosGlobais;
+  rotulo: string;
+}
 
-/** Moldura das telas autenticadas: menu lateral recolhível, filtros globais no topo e conteúdo. */
+/** Destinos principais. Agora reúne Resumo, Jornada e Presença; Frota reúne veículos e leitores. */
+export const DESTINOS: Destino[] = [
+  { rota: '/dashboard', rotulo: 'Agora', icone: 'agora', inclui: ['/jornada', '/presenca'] },
+  { rota: '/escolas', rotulo: 'Escolas', icone: 'escola' },
+  { rota: '/veiculos', rotulo: 'Frota', icone: 'onibus' },
+  { rota: '/alunos', rotulo: 'Alunos', icone: 'aluno' },
+  { rota: '/analises', rotulo: 'Análises', icone: 'grafico' },
+  { rota: '/relatorios', rotulo: 'Relatórios', icone: 'documento' },
+];
+
+/** Subnavegação de "Agora". */
+export const SECOES_AGORA = [
+  { rota: '/dashboard', rotulo: 'Resumo' },
+  { rota: '/jornada', rotulo: 'Jornada' },
+  { rota: '/presenca', rotulo: 'Presença' },
+];
+
+function caminho(url: string): string {
+  return url.split(/[?#]/)[0] || '/';
+}
+
+/** Iniciais do usuário do painel (servidor da secretaria), para o avatar. */
+export function iniciais(nome: string | null | undefined): string {
+  const partes = (nome ?? '').trim().split(/\s+/).filter(Boolean);
+  if (partes.length === 0) {
+    return '?';
+  }
+  const primeira = partes[0][0];
+  const ultima = partes.length > 1 ? partes[partes.length - 1][0] : '';
+  return (primeira + ultima).toUpperCase();
+}
+
+/**
+ * Moldura das telas autenticadas (direção B): barra de vidro no topo com os destinos,
+ * filtros, busca, alertas e menu do usuário. No celular os destinos descem para uma barra
+ * fixa embaixo e os filtros abrem numa folha de baixo.
+ */
 @Component({
   selector: 'rs-shell',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, IndicadorConexao, BuscaGlobal],
+  imports: [
+    RouterOutlet,
+    RouterLink,
+    RouterLinkActive,
+    IndicadorConexao,
+    BuscaGlobal,
+    PainelFiltros,
+    Icone,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <a class="pular" href="#conteudo">Pular para o conteúdo</a>
-    <div class="shell" [class.shell--recolhido]="recolhido()">
-      <aside class="menu">
-        <div class="marca">
-          <span class="rs-marca nome">
-            <img src="logo.svg" alt="" width="40" height="32" />
-            <span [class.rs-somente-leitor]="recolhido()">
-              <span class="rs-marca__rota">Rota </span><span class="rs-marca__segura">Segura</span>
-            </span>
-          </span>
-          <button
-            type="button"
-            class="recolher"
-            (click)="alternarMenu()"
-            [attr.aria-expanded]="!recolhido()"
-            aria-controls="menu-principal"
-            [attr.aria-label]="recolhido() ? 'Expandir menu' : 'Recolher menu'"
+
+    <header class="topo">
+      <a class="marca" routerLink="/dashboard" queryParamsHandling="preserve" aria-label="Início">
+        <img src="logo.svg" alt="" width="36" height="29" />
+        <span class="marca__nome rs-marca"
+          ><span class="rs-marca__rota">Rota</span
+          ><span class="rs-marca__segura">Segura</span></span
+        >
+      </a>
+
+      <nav class="nav" aria-label="Menu principal">
+        @for (d of destinos; track d.rota) {
+          <a
+            [routerLink]="d.rota"
+            queryParamsHandling="preserve"
+            [class.ativo]="ativo(d)"
+            [attr.aria-current]="ativo(d) ? 'page' : null"
           >
-            {{ recolhido() ? '»' : '«' }}
+            <rs-icone [nome]="d.icone" [tamanho]="20" />
+            <span>{{ d.rotulo }}</span>
+          </a>
+        }
+      </nav>
+
+      <div class="acoes">
+        <rs-indicador-conexao class="so-largo" />
+        <button
+          type="button"
+          class="acao acao--filtros"
+          (click)="painel().abrir()"
+          [attr.aria-label]="
+            filtrosAtivos() ? 'Filtros, ' + filtrosAtivos() + ' ativos' : 'Abrir filtros'
+          "
+        >
+          <rs-icone nome="filtro" />
+          <span class="so-largo">Filtros</span>
+          @if (filtrosAtivos()) {
+            <span class="contador">{{ filtrosAtivos() }}</span>
+          }
+        </button>
+        <button
+          type="button"
+          class="acao"
+          (click)="busca().abrir()"
+          aria-keyshortcuts="Control+K"
+          aria-label="Buscar aluno, placa ou leitor"
+        >
+          <rs-icone nome="busca" />
+          <kbd class="so-largo">Ctrl K</kbd>
+        </button>
+        <a
+          class="acao sino"
+          routerLink="/alertas"
+          queryParamsHandling="preserve"
+          routerLinkActive="ativo"
+          [attr.aria-label]="rotuloSino()"
+        >
+          <rs-icone nome="sino" />
+          @if ((alertas.abertos() ?? 0) > 0) {
+            <span class="contador" [class.contador--critico]="alertas.criticosAbertos() > 0">{{
+              alertas.abertos()
+            }}</span>
+          }
+        </a>
+
+        <div class="usuario">
+          <button
+            #botaoUsuario
+            type="button"
+            class="avatar"
+            (click)="menuAberto.set(!menuAberto())"
+            [attr.aria-expanded]="menuAberto()"
+            aria-controls="menu-usuario"
+            aria-haspopup="menu"
+            [attr.aria-label]="'Menu de ' + (auth.usuario()?.nome ?? 'usuário')"
+          >
+            {{ siglaUsuario() }}
           </button>
+          @if (menuAberto()) {
+            <div
+              id="menu-usuario"
+              class="menu-usuario rs-vidro"
+              role="menu"
+              (keydown.escape)="fecharMenu(true)"
+            >
+              <div class="quem">
+                <strong>{{ auth.usuario()?.nome }}</strong>
+                <span>{{ perfil() }}</span>
+              </div>
+              <button type="button" role="menuitem" (click)="tema.alternar()">
+                <rs-icone [nome]="tema.tema() === 'escuro' ? 'sol' : 'lua'" />
+                {{ tema.tema() === 'escuro' ? 'Tema claro' : 'Tema escuro' }}
+              </button>
+              <button
+                type="button"
+                role="menuitemcheckbox"
+                [attr.aria-checked]="alertas.som()"
+                (click)="alertas.alternarSom()"
+              >
+                <rs-icone [nome]="alertas.som() ? 'som' : 'mudo'" />
+                Som em alerta crítico: {{ alertas.som() ? 'ligado' : 'desligado' }}
+              </button>
+              <a
+                role="menuitem"
+                routerLink="/operacao"
+                queryParamsHandling="preserve"
+                (click)="fecharMenu()"
+              >
+                <rs-icone nome="tv" /> Modo TV
+              </a>
+              <button type="button" role="menuitem" class="sair" (click)="sair()">
+                <rs-icone nome="sair" /> Sair
+              </button>
+            </div>
+          }
         </div>
-
-        <nav id="menu-principal" aria-label="Menu principal">
-          @for (grupo of grupos; track grupo.titulo) {
-            <div class="grupo">
-              @if (!recolhido()) {
-                <h2>{{ grupo.titulo }}</h2>
-              }
-              <ul>
-                @for (item of grupo.itens; track item.rota) {
-                  <li>
-                    <a
-                      [routerLink]="item.rota"
-                      routerLinkActive="ativo"
-                      ariaCurrentWhenActive="page"
-                      queryParamsHandling="preserve"
-                      [attr.title]="recolhido() ? item.rotulo : null"
-                    >
-                      <span class="sigla" aria-hidden="true">{{ item.sigla }}</span>
-                      <span [class.rs-somente-leitor]="recolhido()">{{ item.rotulo }}</span>
-                      @if (item.rota === '/alertas' && (alertas.abertos() ?? 0) > 0) {
-                        <span
-                          class="badge"
-                          [class.badge--critico]="alertas.criticosAbertos() > 0"
-                          [attr.aria-label]="alertas.abertos() + ' alertas abertos'"
-                          >{{ alertas.abertos() }}</span
-                        >
-                      }
-                    </a>
-                  </li>
-                }
-              </ul>
-            </div>
-          }
-        </nav>
-
-        <footer>
-          @if (!recolhido()) {
-            <div class="usuario">
-              <strong>{{ auth.usuario()?.nome }}</strong>
-              <span>{{ perfil() }}</span>
-            </div>
-          }
-          <button
-            type="button"
-            class="rs-botao"
-            (click)="tema.alternar()"
-            [attr.aria-label]="rotuloTema()"
-          >
-            {{ tema.tema() === 'escuro' ? '☀' : '☾' }}
-            @if (!recolhido()) {
-              <span>{{ tema.tema() === 'escuro' ? 'Tema claro' : 'Tema escuro' }}</span>
-            }
-          </button>
-          <button type="button" class="rs-botao" (click)="sair()" aria-label="Sair do painel">
-            ⎋
-            @if (!recolhido()) {
-              <span>Sair</span>
-            }
-          </button>
-        </footer>
-      </aside>
-
-      <div class="principal">
-        <header class="topo">
-          <form class="filtros" aria-label="Filtros globais" (submit)="$event.preventDefault()">
-            <label>
-              <span>Ano letivo</span>
-              <select class="rs-campo" (change)="mudarAnoLetivo($event)">
-                <option value="" [selected]="filtros.anoLetivo() === null">Todos</option>
-                @for (ano of anosLetivos; track ano) {
-                  <option [value]="ano" [selected]="filtros.anoLetivo() === ano">{{ ano }}</option>
-                }
-              </select>
-            </label>
-            <label>
-              <span>Escola</span>
-              <select class="rs-campo" (change)="mudarEscola($event)" [disabled]="!opcoes()">
-                <option value="" [selected]="filtros.escolaId() === null">Todas</option>
-                @for (e of opcoes()?.escolas ?? []; track e.id) {
-                  <option [value]="e.id" [selected]="filtros.escolaId() === e.id">
-                    {{ e.nome }}
-                  </option>
-                }
-              </select>
-            </label>
-            <label>
-              <span>Ano escolar</span>
-              <select class="rs-campo" (change)="mudarAnoEscolar($event)" [disabled]="!opcoes()">
-                <option value="" [selected]="filtros.anoEscolar() === null">Todos</option>
-                @for (a of opcoes()?.anosEscolares ?? []; track a) {
-                  <option [value]="a" [selected]="filtros.anoEscolar() === a">{{ a }}</option>
-                }
-              </select>
-            </label>
-            <label>
-              <span>Turma</span>
-              <select class="rs-campo" (change)="mudarTurma($event)" [disabled]="!opcoes()">
-                <option value="" [selected]="filtros.turmaId() === null">Todas</option>
-                @for (t of turmas(); track t.id) {
-                  <option [value]="t.id" [selected]="filtros.turmaId() === t.id">
-                    {{ t.nome }}
-                  </option>
-                }
-              </select>
-            </label>
-          </form>
-          <div class="topo-acoes">
-            <button
-              type="button"
-              class="rs-botao rs-botao--pequeno"
-              (click)="busca.abrir()"
-              aria-keyshortcuts="Control+K"
-            >
-              Buscar <kbd>Ctrl K</kbd>
-            </button>
-            <a
-              class="rs-botao rs-botao--pequeno"
-              routerLink="/operacao"
-              queryParamsHandling="preserve"
-              >Modo operação</a
-            >
-            <rs-indicador-conexao />
-          </div>
-        </header>
-
-        <main id="conteudo" tabindex="-1">
-          <router-outlet />
-        </main>
       </div>
-    </div>
-    <rs-busca-global #busca />
+    </header>
+
+    @if (secaoAgora() || chips().length) {
+      <div class="contexto">
+        @if (secaoAgora()) {
+          <nav class="rs-pilulas" aria-label="Seções de Agora">
+            @for (s of secoesAgora; track s.rota) {
+              <a
+                [routerLink]="s.rota"
+                queryParamsHandling="preserve"
+                routerLinkActive="ativo"
+                ariaCurrentWhenActive="page"
+                >{{ s.rotulo }}</a
+              >
+            }
+          </nav>
+        }
+        @if (chips().length) {
+          <ul class="chips" aria-label="Filtros ativos">
+            @for (c of chips(); track c.chave) {
+              <li class="rs-chip">
+                {{ c.rotulo }}
+                <button
+                  type="button"
+                  (click)="removerFiltro(c.chave)"
+                  [attr.aria-label]="'Remover filtro ' + c.rotulo"
+                >
+                  <rs-icone nome="x" [tamanho]="14" />
+                </button>
+              </li>
+            }
+            <li>
+              <button type="button" class="limpar" (click)="filtros.limpar()">Limpar</button>
+            </li>
+          </ul>
+        }
+      </div>
+    }
+
+    <main id="conteudo" tabindex="-1">
+      <router-outlet />
+    </main>
+
+    <rs-busca-global />
+    <rs-painel-filtros [opcoes]="opcoes()" [anosLetivos]="anosLetivos" />
   `,
   styles: `
+    :host {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      min-height: 100dvh;
+    }
     .pular {
       position: absolute;
       left: -9999px;
@@ -201,196 +272,314 @@ const CHAVE_MENU = 'rs.menu-recolhido';
     .pular:focus {
       left: 8px;
     }
-    .shell {
-      display: grid;
-      grid-template-columns: 240px 1fr;
-      min-height: 100vh;
-    }
-    .shell--recolhido {
-      grid-template-columns: 64px 1fr;
-    }
-    .menu {
+
+    /* Barra de vidro. O desfoque fica num pseudo-elemento: assim ele não vira "bloco de
+       contenção" e a nav pode ser fixa no rodapé do celular. */
+    .topo {
       position: sticky;
-      top: 0;
+      top: 12px;
+      z-index: 30;
       display: flex;
-      flex-direction: column;
-      height: 100vh;
-      border-right: 1px solid var(--borda);
-      background: var(--superficie);
-      overflow-y: auto;
+      align-items: center;
+      gap: 16px;
+      margin: 12px 16px 0;
+      padding: 8px 10px 8px 16px;
+      min-height: 64px;
+    }
+    .topo::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      border: 1px solid var(--vidro-borda);
+      border-radius: var(--raio-vidro);
+      background: var(--vidro);
+      box-shadow: var(--vidro-sombra);
+      -webkit-backdrop-filter: var(--vidro-desfoque);
+      backdrop-filter: var(--vidro-desfoque);
     }
     .marca {
-      display: flex;
+      display: inline-flex;
       align-items: center;
       gap: 10px;
-      padding: 14px 12px;
-      border-bottom: 1px solid var(--borda);
+      flex: none;
+      text-decoration: none;
+      font-size: 18px;
     }
-    .shell--recolhido .marca {
-      flex-direction: column;
+    .marca__nome {
+      gap: 0.28em;
     }
-    .nome {
+    .marca img {
+      width: 36px;
+      height: auto;
+    }
+    .nav {
+      display: flex;
+      gap: 4px;
       flex: 1;
       min-width: 0;
-      font-size: 17px;
     }
-    .shell--recolhido .nome {
-      flex: none;
-    }
-    .recolher {
-      border: 1px solid var(--borda);
-      border-radius: 6px;
-      background: none;
-      color: var(--texto-suave);
-      cursor: pointer;
-      padding: 2px 8px;
-    }
-    .recolher:hover {
-      border-color: var(--borda-forte);
-      color: var(--texto);
-    }
-    nav {
-      flex: 1;
-      padding: 8px;
-    }
-    .grupo h2 {
-      padding: 14px 8px 6px;
-      color: var(--texto-mudo);
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: 0.14em;
-    }
-    ul {
-      list-style: none;
-      margin: 0;
-      padding: 0;
-    }
-    nav a {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 8px;
-      border-radius: 8px;
-      color: var(--texto);
-      text-decoration: none;
-    }
-    nav a:hover {
-      background: var(--superficie-2);
-    }
-    nav a.ativo {
-      background: var(--info-fundo);
-      box-shadow: inset 3px 0 0 var(--marca-secundaria);
-      font-weight: 600;
-    }
-    .sigla {
-      display: grid;
-      place-items: center;
-      flex: none;
-      width: 28px;
-      height: 28px;
-      border: 1px solid var(--borda);
-      border-radius: 6px;
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--texto-suave);
-    }
-    .badge {
-      margin-left: auto;
-      min-width: 20px;
-      padding: 0 6px;
-      border-radius: 999px;
-      background: var(--atencao);
-      color: #07111f;
-      font-size: 11px;
-      font-weight: 700;
-      text-align: center;
-    }
-    .badge--critico {
-      background: var(--critico);
-    }
-    .topo-acoes {
-      display: flex;
+    .nav a {
+      display: inline-flex;
       align-items: center;
       gap: 8px;
+      padding: 9px 14px;
+      border-radius: 12px;
+      color: var(--texto-suave);
+      font-weight: 700;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .nav a:hover {
+      color: var(--texto);
+      background: var(--neutro-fundo);
+    }
+    .nav a.ativo {
+      background: var(--realce);
+      color: var(--texto-sobre-realce);
+    }
+    .acoes {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-left: auto;
+    }
+    .acao {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-width: 44px;
+      height: 44px;
+      padding: 0 12px;
+      border: 1px solid var(--vidro-borda);
+      border-radius: 14px;
+      background: none;
+      color: var(--texto);
+      font-weight: 700;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .acao:hover,
+    .acao.ativo {
+      background: var(--neutro-fundo);
+    }
+    .acao--filtros {
+      background: var(--realce);
+      color: var(--texto-sobre-realce);
+      border-color: transparent;
+    }
+    .acao--filtros:hover {
+      background: var(--realce);
+      opacity: 0.9;
     }
     kbd {
       font-family: var(--fonte-mono);
       font-size: 11px;
-      color: var(--texto-suave);
+      color: var(--texto-mudo);
     }
-    nav a.ativo .sigla {
-      border-color: var(--info);
-      color: var(--info);
+    .contador {
+      min-width: 20px;
+      padding: 1px 6px;
+      border-radius: 999px;
+      background: var(--atencao);
+      color: #07111f;
+      font-size: 11px;
+      font-weight: 800;
+      line-height: 18px;
+      text-align: center;
     }
-    footer {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      padding: 12px;
-      border-top: 1px solid var(--borda);
+    .acao--filtros .contador {
+      background: var(--rs-verde-500);
+      color: #fff;
     }
-    footer .rs-botao {
-      justify-content: center;
+    .sino .contador {
+      position: absolute;
+      top: -6px;
+      right: -6px;
+    }
+    .contador--critico {
+      background: var(--critico);
     }
     .usuario {
+      position: relative;
+    }
+    .avatar {
+      display: grid;
+      place-items: center;
+      width: 44px;
+      height: 44px;
+      border: 0;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--rs-azul-500), var(--rs-teal-500));
+      color: #fff;
+      font-weight: 800;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .menu-usuario {
+      position: absolute;
+      top: calc(100% + 10px);
+      right: 0;
+      z-index: 40;
       display: flex;
       flex-direction: column;
-      min-width: 0;
+      min-width: 260px;
+      padding: 8px;
+      background: var(--vidro-forte);
     }
-    .usuario strong {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+    .quem {
+      display: flex;
+      flex-direction: column;
+      padding: 8px 10px 10px;
+      margin-bottom: 4px;
+      border-bottom: 1px solid var(--vidro-borda);
     }
-    .usuario span {
+    .quem span {
       color: var(--texto-suave);
       font-size: 12px;
     }
-    .principal {
+    .menu-usuario button,
+    .menu-usuario a {
       display: flex;
-      flex-direction: column;
-      min-width: 0;
-    }
-    .topo {
-      position: sticky;
-      top: 0;
-      z-index: 10;
-      display: flex;
-      align-items: flex-end;
-      justify-content: space-between;
-      gap: 16px;
-      flex-wrap: wrap;
-      padding: 10px 20px;
-      border-bottom: 1px solid var(--borda);
-      background: var(--superficie);
-    }
-    .filtros {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-    }
-    .filtros label {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-      font-size: 11px;
-      color: var(--texto-suave);
-    }
-    .filtros select {
-      min-width: 130px;
+      align-items: center;
+      gap: 10px;
+      min-height: 42px;
+      padding: 8px 10px;
+      border: 0;
+      border-radius: 10px;
+      background: none;
       color: var(--texto);
+      font-weight: 600;
+      text-align: left;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .menu-usuario button:hover,
+    .menu-usuario a:hover {
+      background: var(--neutro-fundo);
+    }
+    .menu-usuario .sair {
+      color: var(--critico);
+    }
+
+    .contexto {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin: 14px 16px 0;
+    }
+    .chips {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+    .limpar {
+      padding: 4px 8px;
+      border: 0;
+      background: none;
+      color: var(--link);
+      font-weight: 700;
+      cursor: pointer;
     }
     main {
       flex: 1;
-      padding: 20px;
+      width: 100%;
+      max-width: 1600px;
+      margin: 0 auto;
+      padding: 18px 16px 32px;
     }
     main:focus {
       outline: none;
     }
+
+    @media (max-width: 1180px) {
+      .marca__nome,
+      .so-largo {
+        display: none;
+      }
+    }
+
+    /* Celular: destinos numa barra fixa embaixo, ao alcance do polegar. */
     @media (max-width: 760px) {
-      .shell,
-      .shell--recolhido {
-        grid-template-columns: 64px 1fr;
+      .topo {
+        top: 8px;
+        margin: 8px 8px 0;
+        padding: 6px 6px 6px 12px;
+        min-height: 56px;
+        gap: 8px;
+      }
+      .marca__nome {
+        display: inline-flex;
+        font-size: 16px;
+      }
+      .nav {
+        position: fixed;
+        left: 8px;
+        right: 8px;
+        bottom: calc(8px + env(safe-area-inset-bottom));
+        z-index: 30;
+        justify-content: space-around;
+        padding: 6px;
+        border: 1px solid var(--vidro-borda);
+        border-radius: 22px;
+        background: var(--vidro-forte);
+        box-shadow: var(--vidro-sombra);
+      }
+      .nav a {
+        flex: 1;
+        flex-direction: column;
+        gap: 2px;
+        padding: 7px 4px;
+        font-size: 11px;
+      }
+      .nav a.ativo {
+        background: none;
+        color: var(--marca);
+      }
+      .acoes {
+        gap: 4px;
+      }
+      .acao {
+        min-width: 40px;
+        height: 40px;
+        padding: 0 8px;
+        border-color: transparent;
+      }
+      .avatar {
+        width: 40px;
+        height: 40px;
+      }
+      .contexto {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+        margin: 10px 8px 0;
+      }
+      .contexto .rs-pilulas {
+        align-self: flex-start;
+      }
+      .chips {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        scrollbar-width: none;
+      }
+      .chips > li {
+        flex: none;
+      }
+      main {
+        padding: 14px 8px calc(96px + env(safe-area-inset-bottom));
+      }
+    }
+    @media (max-width: 380px) {
+      .marca__nome {
+        display: none;
       }
     }
   `,
@@ -399,51 +588,68 @@ export class Shell implements OnDestroy {
   protected readonly auth = inject(AuthService);
   protected readonly tema = inject(TemaService);
   protected readonly filtros = inject(FiltrosStore);
+  protected readonly alertas = inject(AlertasAoVivo);
   private readonly sse = inject(SseService);
   private readonly router = inject(Router);
+  private readonly api = inject(PainelApi);
+  private readonly host = inject(ElementRef<HTMLElement>);
 
-  protected readonly grupos: { titulo: string; itens: ItemDeMenu[] }[] = [
-    {
-      titulo: 'OPERACIONAL',
-      itens: [
-        { rota: '/dashboard', rotulo: 'Dashboard', sigla: 'Da' },
-        { rota: '/presenca', rotulo: 'Presença', sigla: 'Pr' },
-        { rota: '/jornada', rotulo: 'Jornada', sigla: 'Jo' },
-        { rota: '/veiculos', rotulo: 'Veículos', sigla: 'Ve' },
-        { rota: '/alertas', rotulo: 'Alertas', sigla: 'Al' },
-      ],
-    },
-    {
-      titulo: 'GESTÃO',
-      itens: [
-        { rota: '/alunos', rotulo: 'Alunos', sigla: 'Au' },
-        { rota: '/relatorios', rotulo: 'Relatórios', sigla: 'Re' },
-      ],
-    },
-  ];
+  protected readonly destinos = DESTINOS;
+  protected readonly secoesAgora = SECOES_AGORA;
 
   private readonly anoAtual = new Date().getFullYear();
   protected readonly anosLetivos = [this.anoAtual, this.anoAtual - 1, this.anoAtual - 2];
-  protected readonly recolhido = signal(this.lerMenuRecolhido());
+  protected readonly opcoes = signal<OpcoesDeFiltro | null>(null);
+  protected readonly menuAberto = signal(false);
+
+  private readonly url = toSignal(
+    this.router.events.pipe(
+      filter((e): e is NavigationEnd => e instanceof NavigationEnd),
+      map((e) => caminho(e.urlAfterRedirects)),
+    ),
+    { initialValue: caminho(this.router.url) },
+  );
+
+  protected readonly secaoAgora = computed(() =>
+    SECOES_AGORA.some((s) => this.url().startsWith(s.rota)),
+  );
+
   protected readonly perfil = computed(() => {
     const usuario = this.auth.usuario();
     return usuario ? ROTULO_PERFIL[usuario.perfil] : '';
   });
-  protected readonly rotuloTema = computed(() =>
-    this.tema.tema() === 'escuro' ? 'Mudar para o tema claro' : 'Mudar para o tema escuro',
-  );
+  protected readonly siglaUsuario = computed(() => iniciais(this.auth.usuario()?.nome));
+  protected readonly rotuloSino = computed(() => {
+    const n = this.alertas.abertos() ?? 0;
+    return n > 0 ? `Alertas, ${n} abertos` : 'Alertas';
+  });
 
-  protected readonly alertas = inject(AlertasAoVivo);
-  private readonly api = inject(PainelApi);
-  protected readonly opcoes = signal<OpcoesDeFiltro | null>(null);
-  /** Turmas da escola escolhida (ou todas), respeitando o ano escolar escolhido. */
-  protected readonly turmas = computed(() =>
-    (this.opcoes()?.turmas ?? []).filter(
-      (t) =>
-        (this.filtros.escolaId() === null || t.escolaId === this.filtros.escolaId()) &&
-        (this.filtros.anoEscolar() === null || t.anoEscolar === this.filtros.anoEscolar()),
-    ),
-  );
+  /** Filtros ativos como chips, com os nomes vindos das opções (sem dado pessoal). */
+  protected readonly chips = computed<ChipDeFiltro[]>(() => {
+    const f = this.filtros.filtros();
+    const o = this.opcoes();
+    const saida: ChipDeFiltro[] = [];
+    if (f.anoLetivo !== null) {
+      saida.push({ chave: 'anoLetivo', rotulo: `Ano letivo ${f.anoLetivo}` });
+    }
+    if (f.escolaId !== null) {
+      const nome = o?.escolas.find((e) => e.id === f.escolaId)?.nome;
+      saida.push({ chave: 'escolaId', rotulo: nome ?? `Escola #${f.escolaId}` });
+    }
+    if (f.anoEscolar !== null) {
+      saida.push({ chave: 'anoEscolar', rotulo: f.anoEscolar });
+    }
+    if (f.turmaId !== null) {
+      const nome = o?.turmas.find((t) => t.id === f.turmaId)?.nome;
+      saida.push({ chave: 'turmaId', rotulo: nome ? `Turma ${nome}` : `Turma #${f.turmaId}` });
+    }
+    return saida;
+  });
+  protected readonly filtrosAtivos = computed(() => this.chips().length);
+
+  protected readonly busca = viewChild.required(BuscaGlobal);
+  protected readonly painel = viewChild.required(PainelFiltros);
+  private readonly botaoUsuario = viewChild<ElementRef<HTMLButtonElement>>('botaoUsuario');
 
   constructor() {
     this.sse.conectar();
@@ -456,11 +662,21 @@ export class Shell implements OnDestroy {
       });
       aoLimpar(() => assinatura.unsubscribe());
     });
+    // Trocar de tela fecha o menu do usuário.
+    effect(() => {
+      this.url();
+      this.menuAberto.set(false);
+    });
   }
 
   ngOnDestroy(): void {
     this.sse.desconectar();
     this.alertas.parar();
+  }
+
+  protected ativo(d: Destino): boolean {
+    const atual = this.url();
+    return [d.rota, ...(d.inclui ?? [])].some((r) => atual === r || atual.startsWith(r + '/'));
   }
 
   @HostListener('document:keydown', ['$event'])
@@ -471,46 +687,34 @@ export class Shell implements OnDestroy {
     }
   }
 
-  private readonly busca = viewChild.required(BuscaGlobal);
-
-  protected mudarEscola(evento: Event): void {
-    const valor = (evento.target as HTMLSelectElement).value;
-    void this.filtros.definir({ escolaId: valor ? Number(valor) : null });
-  }
-
-  protected mudarAnoEscolar(evento: Event): void {
-    const valor = (evento.target as HTMLSelectElement).value;
-    void this.filtros.definir({ anoEscolar: valor || null, turmaId: null });
-  }
-
-  protected mudarTurma(evento: Event): void {
-    const valor = (evento.target as HTMLSelectElement).value;
-    void this.filtros.definir({ turmaId: valor ? Number(valor) : null });
-  }
-
-  protected alternarMenu(): void {
-    this.recolhido.update((valor) => !valor);
-    try {
-      localStorage.setItem(CHAVE_MENU, String(this.recolhido()));
-    } catch {
-      // Sem armazenamento: a preferência vale só para esta sessão.
+  /** Clique fora do menu do usuário fecha o menu. */
+  @HostListener('document:click', ['$event'])
+  protected cliqueFora(evento: MouseEvent): void {
+    if (!this.menuAberto()) {
+      return;
+    }
+    const usuario = (this.host.nativeElement as HTMLElement).querySelector('.usuario');
+    if (usuario && !usuario.contains(evento.target as Node)) {
+      this.menuAberto.set(false);
     }
   }
 
-  protected mudarAnoLetivo(evento: Event): void {
-    const valor = (evento.target as HTMLSelectElement).value;
-    void this.filtros.definir({ anoLetivo: valor ? Number(valor) : null });
+  protected fecharMenu(devolverFoco = false): void {
+    this.menuAberto.set(false);
+    if (devolverFoco) {
+      this.botaoUsuario()?.nativeElement.focus();
+    }
+  }
+
+  protected removerFiltro(chave: keyof FiltrosGlobais): void {
+    const parcial: Partial<FiltrosGlobais> = { [chave]: null };
+    if (chave === 'anoEscolar' || chave === 'escolaId') {
+      parcial.turmaId = null;
+    }
+    void this.filtros.definir(parcial);
   }
 
   protected sair(): void {
     this.auth.sair().subscribe(() => void this.router.navigate(['/login']));
-  }
-
-  private lerMenuRecolhido(): boolean {
-    try {
-      return localStorage.getItem(CHAVE_MENU) === 'true';
-    } catch {
-      return false;
-    }
   }
 }

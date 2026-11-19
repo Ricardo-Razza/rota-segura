@@ -28,11 +28,13 @@ export const routes: Routes = [
     children: [
       { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
       { path: 'dashboard', loadChildren: () => import('./features/dashboard/dashboard.routes') },
+      { path: 'escolas', loadChildren: () => import('./features/escolas/escolas.routes') },
       { path: 'presenca', loadChildren: () => import('./features/presenca/presenca.routes') },
       { path: 'jornada', loadChildren: () => import('./features/jornada/jornada.routes') },
       { path: 'veiculos', loadChildren: () => import('./features/veiculos/veiculos.routes') },
       { path: 'alertas', loadChildren: () => import('./features/alertas/alertas.routes') },
       { path: 'alunos', loadChildren: () => import('./features/alunos/alunos.routes') },
+      { path: 'analises', loadChildren: () => import('./features/analises/analises.routes') },
       { path: 'relatorios', loadChildren: () => import('./features/relatorios/relatorios.routes') },
     ],
   },

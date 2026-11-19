@@ -11,6 +11,7 @@ import {
 } from '@angular/core';
 import type * as L from 'leaflet';
 import { RastreioVeiculo, StatusVeiculo } from '../../core/api/modelos';
+import { Tom } from '../../shared/ui/tom';
 import { rotuloVeiculo } from '../../shared/formato';
 import { CONFIG_MAPA } from './mapa.config';
 import { situacaoGps } from './veiculos.logica';
@@ -19,6 +20,23 @@ const COR_ESTADO: Record<string, string> = {
   EM_ROTA: '--info',
   CONCLUIDO: '--sucesso',
   SEM_EMBARQUE: '--texto-mudo',
+};
+
+/** Escola desenhada no mapa (quadrado na cor da faixa de presença). Coordenadas vêm do cadastro do leitor. */
+export interface PontoEscola {
+  id: number;
+  latitude: number;
+  longitude: number;
+  rotulo: string;
+  tom: Tom;
+}
+
+const COR_TOM: Record<Tom, string> = {
+  sucesso: '--sucesso',
+  atencao: '--atencao',
+  critico: '--critico',
+  info: '--info',
+  neutro: '--texto-mudo',
 };
 
 function cor(token: string): string {
@@ -39,23 +57,40 @@ function cor(token: string): string {
     <div
       #mapa
       class="mapa"
+      [style.height]="altura()"
       role="region"
       aria-label="Mapa com a posição GPS dos veículos, o rastro do dia e a cerca das escolas"
     ></div>
-    <ul class="legenda" aria-label="Legenda do mapa">
-      <li><span class="ponto" style="background: var(--info)"></span>Em rota</li>
-      <li><span class="ponto" style="background: var(--sucesso)"></span>Concluído</li>
-      <li><span class="ponto" style="background: var(--texto-mudo)"></span>Sem embarque</li>
-      <li><span class="ponto ponto--vazio"></span>Sem GPS (na escola de destino)</li>
-      <li><span class="traco"></span>Rastro de hoje</li>
-      <li><span class="ponto ponto--cerca"></span>Cerca da escola</li>
-    </ul>
+    @if (legenda()) {
+      <ul class="legenda" aria-label="Legenda do mapa">
+        <li><span class="ponto" style="background: var(--info)"></span>Em rota</li>
+        <li><span class="ponto" style="background: var(--sucesso)"></span>Concluído</li>
+        <li><span class="ponto" style="background: var(--texto-mudo)"></span>Sem embarque</li>
+        <li><span class="ponto ponto--vazio"></span>Sem GPS (na escola de destino)</li>
+        <li><span class="traco"></span>Rastro de hoje</li>
+        <li><span class="ponto ponto--cerca"></span>Cerca da escola</li>
+        @if (escolas().length) {
+          <li><span class="quadrado"></span>Escola (cor da presença)</li>
+        }
+      </ul>
+    }
   `,
   styles: `
+    :host {
+      display: block;
+    }
     .mapa {
-      height: 420px;
       border-radius: var(--raio-sm);
       z-index: 0;
+      background: var(--fundo);
+    }
+    .quadrado {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      margin-right: 6px;
+      border-radius: 3px;
+      background: var(--sucesso);
     }
     .legenda {
       display: flex;
@@ -96,6 +131,11 @@ export class MapaVeiculos implements OnDestroy {
   readonly raioCercaM = input(0);
   readonly selecionadoId = input<number | null>(null);
   readonly selecionar = output<number>();
+  readonly escolas = input<PontoEscola[]>([]);
+  readonly escolaSelecionadaId = input<number | null>(null);
+  readonly selecionarEscola = output<number>();
+  readonly altura = input('420px');
+  readonly legenda = input(true);
 
   private readonly elemento = viewChild.required<ElementRef<HTMLDivElement>>('mapa');
   private leaflet: typeof L | null = null;
@@ -143,6 +183,8 @@ export class MapaVeiculos implements OnDestroy {
     const rastreios = new Map(this.rastreios().map((r) => [r.veiculoId, r]));
     const raio = this.raioCercaM();
     const selecionado = this.selecionadoId();
+    const pontosEscola = this.escolas();
+    const escolaAtiva = this.escolaSelecionadaId();
     const Lf = this.leaflet;
     if (!Lf || !this.mapa || !this.camada) {
       return;
@@ -212,16 +254,36 @@ export class MapaVeiculos implements OnDestroy {
       }
     }
 
+    for (const e of pontosEscola) {
+      const ativa = e.id === escolaAtiva;
+      const tamanho = ativa ? 22 : 16;
+      Lf.marker([e.latitude, e.longitude], {
+        keyboard: false,
+        icon: Lf.divIcon({
+          className: 'rs-marcador-escola',
+          iconSize: [tamanho, tamanho],
+          html: `<span style="background:${cor(COR_TOM[e.tom])};${ativa ? 'box-shadow:0 0 0 3px ' + cor('--texto') : ''}"></span>`,
+        }),
+      })
+        .bindTooltip(e.rotulo)
+        .on('click', () => this.selecionarEscola.emit(e.id))
+        .addTo(this.camada);
+      enquadrar.push([e.latitude, e.longitude]);
+    }
+
     // Reenquadra só quando muda quem está no mapa ou quem está selecionado.
     const assinatura =
       veiculos.map((v) => `${v.id}:${rastreios.get(v.id)?.posicao ? 1 : 0}`).join() +
-      `|${selecionado}`;
+      `|${selecionado}|${pontosEscola.map((e) => e.id).join()}|${escolaAtiva}`;
     if (assinatura === this.enquadrado || enquadrar.length === 0) {
       return;
     }
     this.enquadrado = assinatura;
     const foco = selecionado === null ? undefined : rastreios.get(selecionado);
-    if (foco?.posicao) {
+    const escolaFoco = pontosEscola.find((e) => e.id === escolaAtiva);
+    if (escolaFoco) {
+      this.mapa.setView([escolaFoco.latitude, escolaFoco.longitude], 15);
+    } else if (foco?.posicao) {
       const pontos: L.LatLngExpression[] = [
         [foco.posicao.latitude, foco.posicao.longitude],
         ...foco.rastro.map((p) => [p.latitude, p.longitude] as L.LatLngExpression),

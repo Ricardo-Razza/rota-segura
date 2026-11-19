@@ -39,14 +39,14 @@ import { Tom } from './tom';
       flex-direction: column;
       gap: 4px;
       height: 100%;
-      padding: 14px 16px;
-      border: 1px solid var(--borda);
-      border-left: 4px solid var(--borda);
-      border-radius: var(--raio);
-      background: var(--superficie);
+      padding: 16px 20px;
+      border: 1px solid var(--vidro-borda);
+      border-left: 4px solid var(--vidro-borda);
+      border-radius: var(--raio-vidro);
+      background: var(--vidro);
       color: var(--texto);
       text-decoration: none;
-      box-shadow: var(--sombra);
+      box-shadow: var(--vidro-sombra);
     }
     .kpi--link:hover {
       background: var(--superficie-2);

@@ -15,6 +15,7 @@ import { PainelApi } from '../../core/api/painel-api.service';
 import { IndicadorConexao } from '../../core/sse/indicador-conexao';
 import { SseService } from '../../core/sse/sse.service';
 import { rotuloVeiculo } from '../../shared/formato';
+import { Icone } from '../../shared/ui/icone';
 
 export const ROTACAO_MS = 20_000;
 
@@ -60,21 +61,27 @@ export function paineisPorEscola(
 /** Modo operação (TV): tela cheia, letras grandes, tempo real e rotação entre escolas a cada 20 s. */
 @Component({
   selector: 'rs-operacao',
-  imports: [IndicadorConexao, RouterLink],
+  imports: [IndicadorConexao, RouterLink, Icone],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="tv">
       <header>
         <span class="rs-marca"
-          ><img src="logo.svg" alt="" width="40" height="32" /><span class="rs-marca__rota"
-            >Rota </span
-          ><span class="rs-marca__segura">Segura</span></span
+          ><img src="logo.svg" alt="" width="44" height="35" /><span
+            ><span class="rs-marca__rota">Rota </span
+            ><span class="rs-marca__segura">Segura</span></span
+          ></span
         >
         <h1>{{ atual()?.titulo ?? 'Carregando…' }}</h1>
-        <span class="rs-nota">{{ indice() + 1 }} / {{ paineis().length || 1 }}</span>
+        <span class="rs-nota rs-mono">{{ indice() + 1 }}/{{ paineis().length || 1 }}</span>
         <rs-indicador-conexao />
-        <button type="button" class="rs-botao" (click)="telaCheia()">Tela cheia</button>
-        <a class="rs-botao" routerLink="/dashboard">Sair</a>
+        <span class="relogio rs-mono" aria-label="Hora atual">{{ relogio() }}</span>
+        <button type="button" class="icone" (click)="telaCheia()" aria-label="Tela cheia">
+          <rs-icone nome="tv" [tamanho]="22" />
+        </button>
+        <a class="icone" routerLink="/dashboard" aria-label="Sair do modo TV">
+          <rs-icone nome="x" [tamanho]="22" />
+        </a>
       </header>
 
       @if (falhou()) {
@@ -85,10 +92,10 @@ export function paineisPorEscola(
 
       @if (atual(); as p) {
         <div class="numeros">
-          <div class="numero">
+          <div class="numero numero--info">
             <span>Veículos em rota</span><strong>{{ p.emRota.length }}</strong>
           </div>
-          <div class="numero">
+          <div class="numero numero--sucesso">
             <span>Embarcados × esperados</span
             ><strong
               >{{ p.embarcados }} <small>/ {{ p.esperados }}</small></strong
@@ -141,19 +148,40 @@ export function paineisPorEscola(
   styles: `
     .tv {
       min-height: 100vh;
-      padding: 24px 32px;
-      background: var(--fundo);
+      min-height: 100dvh;
+      padding: 28px 40px;
+      background: var(--fundo-luz), var(--fundo);
       font-size: 22px;
     }
     header {
       display: flex;
       align-items: center;
       gap: 20px;
-      margin-bottom: 24px;
+      margin-bottom: 28px;
+    }
+    .rs-marca {
+      font-size: 26px;
     }
     h1 {
       flex: 1;
-      font-size: 36px;
+      color: var(--texto-suave);
+      font-size: 26px;
+      font-weight: 600;
+    }
+    .relogio {
+      font-size: 44px;
+      font-weight: 700;
+    }
+    .icone {
+      display: grid;
+      place-items: center;
+      width: 52px;
+      height: 52px;
+      border: 1px solid var(--vidro-borda);
+      border-radius: 16px;
+      background: var(--vidro);
+      color: var(--texto);
+      cursor: pointer;
     }
     .numeros {
       display: grid;
@@ -163,28 +191,41 @@ export function paineisPorEscola(
     .numero {
       display: flex;
       flex-direction: column;
-      padding: 20px;
-      border: 1px solid var(--borda);
-      border-left: 8px solid var(--info);
-      border-radius: var(--raio);
-      background: var(--superficie);
+      padding: 24px 28px;
+      border: 1px solid var(--vidro-borda);
+      border-radius: 24px;
+      background: var(--vidro);
     }
     .numero span {
       color: var(--texto-suave);
+      font-weight: 600;
     }
     .numero strong {
-      font-size: 64px;
-      line-height: 1.1;
+      font-family: var(--fonte-mono);
+      font-size: 80px;
+      line-height: 1.05;
+      letter-spacing: -0.04em;
+    }
+    .numero--info strong {
+      color: var(--info);
+    }
+    .numero--sucesso strong {
+      color: var(--sucesso);
     }
     .numero--critico {
-      border-left-color: var(--critico);
+      border-color: color-mix(in srgb, var(--critico) 50%, transparent);
+      background: var(--critico-fundo);
     }
-    .numero--atencao {
-      border-left-color: var(--atencao);
+    .numero--critico span,
+    .numero--critico strong {
+      color: var(--critico);
+    }
+    .numero--atencao strong {
+      color: var(--atencao-texto);
     }
     small {
-      font-size: 32px;
-      color: var(--texto-suave);
+      font-size: 36px;
+      color: var(--texto-mudo);
     }
     .listas {
       display: grid;
@@ -192,9 +233,16 @@ export function paineisPorEscola(
       gap: 20px;
       margin-top: 24px;
     }
+    .listas section {
+      padding: 24px 28px;
+      border: 1px solid var(--vidro-borda);
+      border-radius: 24px;
+      background: var(--vidro);
+    }
     h2 {
-      font-size: 24px;
-      margin-bottom: 8px;
+      font-size: 26px;
+      font-weight: 800;
+      margin-bottom: 10px;
     }
     ul {
       list-style: none;
@@ -202,8 +250,11 @@ export function paineisPorEscola(
       padding: 0;
     }
     li {
-      padding: 8px 0;
-      border-bottom: 1px solid var(--borda);
+      padding: 12px 0;
+      border-bottom: 1px solid var(--vidro-borda);
+    }
+    li:last-child {
+      border-bottom: 0;
     }
     .critico {
       color: var(--critico);
@@ -219,6 +270,7 @@ export class Operacao implements OnDestroy {
 
   protected readonly rotulo = rotuloVeiculo;
   protected readonly indice = signal(0);
+  protected readonly relogio = signal(horaAgora());
 
   protected readonly veiculos = carga(() => this.api.veiculos({}));
   protected readonly alertas = carga(() =>
@@ -245,6 +297,9 @@ export class Operacao implements OnDestroy {
 
   constructor() {
     this.sse.conectar();
+    interval(15_000)
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => this.relogio.set(horaAgora()));
     interval(ROTACAO_MS)
       .pipe(takeUntilDestroyed())
       .subscribe(() => this.indice.update((i) => (i + 1) % Math.max(1, this.paineis().length)));
@@ -275,4 +330,8 @@ export class Operacao implements OnDestroy {
   protected telaCheia(): void {
     void document.documentElement.requestFullscreen?.().catch(() => undefined);
   }
+}
+
+function horaAgora(): string {
+  return new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 }

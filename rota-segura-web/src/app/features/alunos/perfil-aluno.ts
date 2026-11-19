@@ -17,13 +17,16 @@ const DIAS_CORRIDOS = 130;
 const DIAS_LETIVOS = 90;
 
 /** Perfil do aluno (acesso auditado no backend). Foto só por URL assinada; aqui, placeholder com iniciais. */
+import { Icone } from '../../shared/ui/icone';
 @Component({
   selector: 'rs-perfil-aluno',
-  imports: [ChartCard, KpiCard, StatusBadge, RouterLink],
+  imports: [Icone, ChartCard, KpiCard, StatusBadge, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="rs-pagina">
-      <a routerLink="/alunos" queryParamsHandling="preserve">← Alunos</a>
+      <a class="voltar" routerLink="/alunos" queryParamsHandling="preserve"
+        ><rs-icone nome="esq" [tamanho]="16" /> Alunos</a
+      >
 
       <rs-chart-card
         titulo="Perfil do aluno"
@@ -183,6 +186,14 @@ const DIAS_LETIVOS = 90;
     </div>
   `,
   styles: `
+    .voltar {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      align-self: flex-start;
+      font-weight: 600;
+      text-decoration: none;
+    }
     .cabecalho {
       display: flex;
       align-items: center;

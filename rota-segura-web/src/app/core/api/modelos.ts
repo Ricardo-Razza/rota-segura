@@ -394,6 +394,9 @@ export interface OpcoesDeFiltro {
   escolas: { id: number; nome: string }[];
   anosEscolares: string[];
   turmas: { id: number; nome: string; escolaId: number | null; anoEscolar: string | null }[];
+  /** Etapas configuradas no backend (vazio quando não há mapa de etapas). */
+  etapas: string[];
+  turnos: string[];
   desatualizado: boolean;
 }
 
@@ -418,4 +421,134 @@ export interface Agendamento {
   diaSemana: string;
   criadoEm: string;
   ultimoEnvioEm: string | null;
+}
+
+// ----- Análises
+
+export type Comparacao = 'PERIODO_ANTERIOR' | 'ANO_ANTERIOR' | 'NENHUMA';
+export type Granularidade = 'DIA' | 'SEMANA' | 'MES';
+
+export interface PeriodoDatas {
+  inicio: string;
+  fim: string;
+}
+
+/** Valor do período, do período de referência e a variação (p.p., minutos ou %, conforme o indicador). */
+export interface Indicador {
+  atual: number | null;
+  anterior: number | null;
+  variacao: number | null;
+}
+
+export interface PontoFrequencia {
+  inicio: string;
+  esperados: number;
+  presentes: number;
+  frequencia: number | null;
+}
+
+export interface GrupoFrequencia {
+  chave: string;
+  rotulo: string;
+  esperados: number;
+  presentes: number;
+  frequencia: number | null;
+  anterior: number | null;
+  variacao: number | null;
+  faixa: FaixaFrequencia | null;
+}
+
+export interface AnaliseFrequencia {
+  periodo: PeriodoDatas;
+  referencia: PeriodoDatas | null;
+  granularidade: Granularidade;
+  frequencia: Indicador;
+  diasLetivos: number;
+  alunosAvaliados: number;
+  abaixoDoLimite: Indicador;
+  limiteRisco: number;
+  serie: PontoFrequencia[];
+  serieReferencia: PontoFrequencia[];
+  porEscola: GrupoFrequencia[];
+  porEtapa: GrupoFrequencia[];
+  porTurno: GrupoFrequencia[];
+  porDiaSemana: GrupoFrequencia[];
+  etapasConfiguradas: boolean;
+  desatualizado: boolean;
+  incompleto: boolean;
+}
+
+export interface Comparativo {
+  chave: string;
+  rotulo: string;
+  atual: number;
+  anterior: number;
+  variacao: number | null;
+}
+
+export interface Cobertura {
+  chave: 'BIOMETRIA' | 'VEICULO' | 'RESPONSAVEL';
+  rotulo: string;
+  com: number;
+  total: number;
+  percentual: number | null;
+  disponivel: boolean;
+}
+
+export interface AnaliseMatriculas {
+  anoLetivo: number;
+  agrupamento: 'ETAPA' | 'ANO_ESCOLAR';
+  total: Indicador;
+  turmas: Indicador;
+  porAno: { ano: number; total: number; porGrupo: Record<string, number> }[];
+  porAnoEscolar: Comparativo[];
+  porEscola: Comparativo[];
+  porTurno: Comparativo[];
+  cobertura: Cobertura[];
+  desatualizado: boolean;
+  incompleto: boolean;
+}
+
+export interface PontoFrota {
+  inicio: string;
+  embarques: number;
+  tempoMedioMin: number | null;
+  noPrazo: number | null;
+  alertas: number;
+  criticos: number;
+}
+
+export interface VeiculoAnalise {
+  id: number;
+  placa: string | null;
+  prefixo: string | null;
+  viagens: number;
+  embarques: number;
+  semChegada: number;
+  tempoMedioMin: number | null;
+  noPrazo: number | null;
+  alertas: number;
+}
+
+export interface AnaliseFrota {
+  periodo: PeriodoDatas;
+  referencia: PeriodoDatas | null;
+  granularidade: Granularidade;
+  janelaMin: number;
+  embarques: Indicador;
+  viagens: Indicador;
+  tempoMedioMin: Indicador;
+  noPrazo: Indicador;
+  serie: PontoFrota[];
+  serieReferencia: PontoFrota[];
+  veiculos: VeiculoAnalise[];
+  alertas: {
+    total: Indicador;
+    abertos: number;
+    porSeveridade: Record<Severidade, number>;
+    porTipo: Record<string, number>;
+    tempoMedioResolucaoMin: number | null;
+  };
+  desatualizado: boolean;
+  incompleto: boolean;
 }

@@ -1,0 +1,151 @@
+/* Estilos comuns às três abas de Análises. */
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+.indicadores {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+.grade {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+.grade--principal {
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+}
+.grade--dupla {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.grade > *,
+.indicadores > * {
+  min-width: 0;
+}
+.leitura {
+  margin: 8px 0 0;
+  color: var(--texto-suave);
+  font-size: 13px;
+}
+.mudo {
+  color: var(--texto-mudo);
+}
+.tom-sucesso {
+  color: var(--sucesso);
+}
+.tom-atencao {
+  color: var(--atencao-texto, var(--atencao));
+}
+.tom-critico {
+  color: var(--critico);
+}
+.tom-info {
+  color: var(--info);
+}
+.tom-neutro {
+  color: var(--texto-suave);
+}
+
+/* Cartões por etapa / cobertura */
+.etapas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+}
+.etapa {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 14px;
+  border: 1px solid var(--vidro-borda);
+  border-radius: 14px;
+  background: var(--neutro-fundo);
+}
+.etapa__nome {
+  color: var(--texto-suave);
+  font-size: 13px;
+  font-weight: 700;
+}
+.etapa__valor {
+  font-family: var(--fonte-mono);
+  font-size: 26px;
+  line-height: 1.15;
+}
+.etapa__var {
+  font-size: 12px;
+  font-weight: 700;
+}
+.etapa__base {
+  color: var(--texto-mudo);
+  font-size: 12px;
+}
+
+/* Tabelas */
+.tabela-rolagem {
+  max-width: 100%;
+  overflow-x: auto;
+}
+.tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.tabela th,
+.tabela td {
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--vidro-borda);
+  text-align: left;
+  white-space: nowrap;
+}
+.tabela thead th {
+  color: var(--texto-mudo);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.tabela tbody th {
+  font-weight: 600;
+}
+.tabela .num {
+  font-family: var(--fonte-mono);
+  text-align: right;
+}
+.tabela tbody tr:last-child > * {
+  border-bottom: 0;
+}
+.ponto {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  vertical-align: middle;
+}
+
+@media (max-width: 1180px) {
+  .grade {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .grade--principal {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 900px) {
+  .indicadores {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 760px) {
+  .grade,
+  .grade--dupla {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .indicadores {
+    gap: 8px;
+  }
+}

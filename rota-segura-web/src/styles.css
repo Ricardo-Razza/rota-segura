@@ -58,6 +58,17 @@
 
   --sombra: 0 1px 2px rgba(0, 0, 0, 0.45);
   --sombra-media: 0 6px 16px -6px rgba(0, 0, 0, 0.6), 0 2px 4px rgba(0, 0, 0, 0.4);
+
+  /* Direção B: painéis de vidro sobre um fundo com luz azul. */
+  --raio-vidro: 20px;
+  --vidro: rgba(15, 28, 48, 0.74);
+  --vidro-forte: rgba(15, 28, 48, 0.96);
+  --vidro-borda: rgba(174, 186, 201, 0.14);
+  --vidro-desfoque: blur(18px) saturate(140%);
+  --vidro-sombra: 0 18px 40px -18px rgba(0, 0, 0, 0.7);
+  --fundo-luz: radial-gradient(120% 80% at 70% -10%, #12305a 0%, rgba(7, 17, 31, 0) 60%);
+  --realce: #eef2f8;
+  --texto-sobre-realce: #07111f;
   color-scheme: dark;
 }
 
@@ -95,6 +106,14 @@
 
   --sombra: 0 1px 2px rgba(15, 30, 50, 0.06), 0 1px 1px rgba(15, 30, 50, 0.04);
   --sombra-media: 0 6px 16px -6px rgba(15, 30, 50, 0.18), 0 2px 4px rgba(15, 30, 50, 0.06);
+
+  --vidro: rgba(255, 255, 255, 0.8);
+  --vidro-forte: rgba(255, 255, 255, 0.97);
+  --vidro-borda: rgba(15, 29, 51, 0.1);
+  --vidro-sombra: 0 18px 40px -22px rgba(15, 30, 50, 0.35);
+  --fundo-luz: radial-gradient(120% 80% at 70% -10%, #dbe7fb 0%, rgba(244, 246, 248, 0) 60%);
+  --realce: #0f1d33;
+  --texto-sobre-realce: #ffffff;
   color-scheme: light;
 }
 
@@ -111,7 +130,9 @@ body {
 }
 
 body {
-  background: var(--fundo);
+  background:
+    var(--fundo-luz) fixed,
+    var(--fundo);
   color: var(--texto);
   font-family: var(--fonte);
   font-size: 14px;
@@ -233,6 +254,87 @@ select {
   font-size: 13px;
 }
 
+/* ===== Vidro (direção B) ===== */
+.rs-vidro {
+  border: 1px solid var(--vidro-borda);
+  border-radius: var(--raio-vidro);
+  background: var(--vidro);
+  box-shadow: var(--vidro-sombra);
+  -webkit-backdrop-filter: var(--vidro-desfoque);
+  backdrop-filter: var(--vidro-desfoque);
+}
+
+/* Sem suporte a desfoque, o vidro vira superfície opaca. */
+@supports not (backdrop-filter: blur(1px)) {
+  .rs-vidro {
+    background: var(--vidro-forte);
+  }
+}
+
+/* Abas em pílula: navegação secundária e abas de conteúdo. */
+.rs-pilulas {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--vidro-borda);
+  border-radius: 14px;
+  background: var(--vidro);
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.rs-pilulas > a,
+.rs-pilulas > button {
+  flex: none;
+  padding: 7px 14px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: var(--texto-suave);
+  font-weight: 700;
+  font-size: 13px;
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.rs-pilulas > a:hover,
+.rs-pilulas > button:hover {
+  color: var(--texto);
+}
+.rs-pilulas > a.ativo,
+.rs-pilulas > button[aria-selected='true'] {
+  background: var(--realce);
+  color: var(--texto-sobre-realce);
+}
+
+.rs-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px 5px 12px;
+  border: 1px solid var(--vidro-borda);
+  border-radius: 999px;
+  background: var(--vidro);
+  font-size: 13px;
+  font-weight: 600;
+}
+.rs-chip button {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--texto-suave);
+  cursor: pointer;
+}
+.rs-chip button:hover {
+  background: var(--neutro-fundo);
+  color: var(--texto);
+}
+
 /* ===== Layout das telas (compartilhado pelas features) ===== */
 .rs-pagina {
   display: flex;
@@ -325,24 +427,38 @@ select {
 }
 
 .rs-abas {
-  display: flex;
+  display: inline-flex;
+  align-self: flex-start;
   gap: 4px;
-  border-bottom: 1px solid var(--borda);
+  padding: 4px;
+  border: 1px solid var(--vidro-borda);
+  border-radius: 14px;
+  background: var(--vidro);
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
 }
 
 .rs-abas button {
-  padding: 8px 14px;
+  flex: none;
+  padding: 7px 14px;
   border: 0;
-  border-bottom: 2px solid transparent;
+  border-radius: 10px;
   background: none;
   cursor: pointer;
   color: var(--texto-suave);
-  font-weight: 600;
+  font-weight: 700;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.rs-abas button:hover {
+  color: var(--texto);
 }
 
 .rs-abas button[aria-selected='true'] {
-  border-bottom-color: var(--marca-secundaria);
-  color: var(--texto);
+  background: var(--realce);
+  color: var(--texto-sobre-realce);
 }
 
 .rs-painel-lateral {
@@ -386,5 +502,183 @@ select {
   * {
     animation: none !important;
     transition: none !important;
+  }
+}
+
+/* Rolagem virtual vertical: o conteúdo nunca fica mais largo que a área (textos cortam com reticências). */
+.cdk-virtual-scroll-orientation-vertical .cdk-virtual-scroll-content-wrapper {
+  max-width: 100%;
+}
+
+/* ===== Mapa (Leaflet) no visual B ===== */
+/* Tiles do OpenStreetMap escurecidos por filtro no tema escuro: mesmo provedor, sem chave. */
+:root:not([data-tema='claro']) .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(195deg) brightness(0.7) contrast(0.85) saturate(0.35);
+}
+.leaflet-container {
+  background: var(--fundo);
+  font-family: var(--fonte);
+}
+.leaflet-bar a {
+  background: var(--vidro-forte);
+  border-color: var(--vidro-borda);
+  color: var(--texto);
+}
+.leaflet-bar a:hover {
+  background: var(--superficie-2);
+}
+.leaflet-control-attribution {
+  background: var(--vidro) !important;
+  color: var(--texto-mudo);
+}
+.leaflet-control-attribution a {
+  color: var(--texto-suave);
+}
+.rs-marcador-escola span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 5px;
+  border: 2px solid rgba(7, 17, 31, 0.6);
+}
+
+/* Mapa em destaque com painéis por cima: o zoom desce para o canto inferior direito. */
+.rs-hero-mapa .leaflet-top.leaflet-left {
+  top: auto;
+  bottom: 16px;
+  left: auto;
+  right: 16px;
+}
+
+/* No computador o selo de conexão já fica na barra do topo; nas telas ele só aparece no celular/tablet. */
+@media (min-width: 1181px) {
+  .rs-pagina rs-indicador-conexao {
+    display: none;
+  }
+}
+
+/* Gaveta de filtros: lateral no computador, folha de baixo no celular (filtros globais e Análises). */
+.rs-gaveta {
+  position: fixed;
+  inset: 16px 16px 16px auto;
+  width: min(440px, calc(100vw - 32px));
+  height: auto;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--vidro-borda);
+  border-radius: 24px;
+  background: var(--vidro-forte);
+  color: var(--texto);
+  box-shadow: var(--vidro-sombra);
+}
+.rs-gaveta::backdrop {
+  background: rgba(3, 8, 16, 0.6);
+}
+.rs-gaveta .corpo {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  height: 100%;
+  padding: 22px 24px;
+  overflow-y: auto;
+}
+.rs-gaveta header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.rs-gaveta h2 {
+  font-size: 22px;
+  font-weight: 800;
+}
+.rs-gaveta .fechar {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  color: var(--texto-suave);
+  cursor: pointer;
+}
+.rs-gaveta .fechar:hover {
+  background: var(--neutro-fundo);
+  color: var(--texto);
+}
+.rs-gaveta fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.rs-gaveta legend,
+.rs-gaveta .campo > span {
+  margin-bottom: 8px;
+  padding: 0;
+  color: var(--texto-mudo);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.rs-gaveta .opcoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.rs-gaveta .opcoes button {
+  min-height: 36px;
+  padding: 6px 12px;
+  border: 1px solid var(--borda-forte);
+  border-radius: 10px;
+  background: none;
+  color: var(--texto-suave);
+  font-weight: 600;
+  cursor: pointer;
+}
+.rs-gaveta .opcoes button[aria-pressed='true'] {
+  border-color: var(--rs-verde-500);
+  background: var(--rs-verde-500);
+  color: #fff;
+  font-weight: 700;
+}
+.rs-gaveta .campo {
+  display: flex;
+  flex-direction: column;
+}
+.rs-gaveta .campo select {
+  min-height: 44px;
+  border-radius: 12px;
+  color: var(--texto);
+}
+.rs-gaveta footer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: auto;
+}
+.rs-gaveta .botoes {
+  display: flex;
+  gap: 10px;
+}
+.rs-gaveta .botoes .rs-botao {
+  justify-content: center;
+  min-height: 44px;
+}
+.rs-gaveta .botoes .rs-botao--primario {
+  flex: 1;
+}
+@media (max-width: 760px) {
+  .rs-gaveta {
+    inset: auto 0 0 0;
+    width: 100%;
+    max-width: none;
+    max-height: 88dvh;
+    border-radius: 24px 24px 0 0;
+    border-bottom: 0;
+  }
+  .rs-gaveta .corpo {
+    padding-bottom: calc(22px + env(safe-area-inset-bottom));
   }
 }

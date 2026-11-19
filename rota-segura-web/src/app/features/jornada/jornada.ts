@@ -32,9 +32,10 @@ import {
 const TAMANHO = 200;
 
 /** Jornada do dia em colunas por estado. Os cards mudam de coluna em tempo real (SSE `jornada.atualizada`). */
+import { Icone } from '../../shared/ui/icone';
 @Component({
   selector: 'rs-jornada',
-  imports: [ChartCard, StatusBadge, IndicadorConexao],
+  imports: [Icone, ChartCard, StatusBadge, IndicadorConexao],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="rs-pagina">
@@ -152,7 +153,7 @@ const TAMANHO = 200;
             (click)="fechar()"
             aria-label="Fechar painel"
           >
-            ✕
+            <rs-icone nome="x" />
           </button>
         </div>
         <p class="rs-nota">

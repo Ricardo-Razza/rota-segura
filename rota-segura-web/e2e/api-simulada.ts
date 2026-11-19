@@ -11,6 +11,215 @@ const DIA = `${hoje.getFullYear()}-${pad(hoje.getMonth() + 1)}-${pad(hoje.getDat
 const AGORA = `${DIA}T08:00:00`;
 const ANO = hoje.getFullYear();
 
+/** Análises fictícias: 20 dias letivos, três escolas inventadas, sem nenhum aluno identificado. */
+const ESCOLAS_FICTICIAS = ['Escola Modelo Fictícia', 'Escola Exemplo Norte', 'Escola Exemplo Sul'];
+const ind = (atual: number | null, anterior: number | null, variacao: number | null) => ({
+  atual,
+  anterior,
+  variacao,
+});
+const diasDaSerie = (n: number) =>
+  Array.from({ length: n }, (_, i) => {
+    const d = new Date(hoje);
+    d.setDate(d.getDate() - (n - 1 - i));
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  });
+
+function analise(aba: string): unknown {
+  const dias = diasDaSerie(20);
+  const periodo = { inicio: dias[0], fim: dias[dias.length - 1] };
+  const referencia = { inicio: '2000-01-01', fim: '2000-01-20' };
+  const onda = (i: number, base: number, amp: number) =>
+    Math.round((base + amp * Math.sin(i / 2.5)) * 10) / 10;
+  if (aba === 'frequencia') {
+    const grupo = (chave: string, rotulo: string, f: number, antes: number) => ({
+      chave,
+      rotulo,
+      esperados: 400,
+      presentes: Math.round(f * 4),
+      frequencia: f,
+      anterior: antes,
+      variacao: Math.round((f - antes) * 10) / 10,
+      faixa: f < 60 ? 'CRITICO' : f <= 85 ? 'ATENCAO' : 'OK',
+    });
+    return {
+      periodo,
+      referencia,
+      granularidade: 'DIA',
+      frequencia: ind(89.4, 87.1, 2.3),
+      diasLetivos: 20,
+      alunosAvaliados: 1240,
+      abaixoDoLimite: ind(38, 48, -20.8),
+      limiteRisco: 75,
+      serie: dias.map((inicio, i) => ({
+        inicio,
+        esperados: 62,
+        presentes: 55,
+        frequencia: onda(i, 89, 3),
+      })),
+      serieReferencia: dias.map((inicio, i) => ({
+        inicio,
+        esperados: 62,
+        presentes: 54,
+        frequencia: onda(i + 1, 87, 2.5),
+      })),
+      porEscola: [
+        grupo('1', ESCOLAS_FICTICIAS[0], 93.1, 88.2),
+        grupo('2', ESCOLAS_FICTICIAS[1], 88.6, 89.4),
+        grupo('3', ESCOLAS_FICTICIAS[2], 79.8, 84.4),
+      ],
+      porEtapa: [
+        grupo('INFANTIL', 'INFANTIL', 91.2, 89.9),
+        grupo('FUNDAMENTAL', 'FUNDAMENTAL', 88.1, 85.6),
+      ],
+      porTurno: [
+        grupo('MATUTINO', 'Matutino', 90.4, 88),
+        grupo('VESPERTINO', 'Vespertino', 86.9, 86.1),
+      ],
+      porDiaSemana: [
+        grupo('MONDAY', 'Seg', 84.2, 83),
+        grupo('TUESDAY', 'Ter', 91.5, 90),
+        grupo('WEDNESDAY', 'Qua', 92.8, 91),
+        grupo('THURSDAY', 'Qui', 91.1, 90.2),
+        grupo('FRIDAY', 'Sex', 86.3, 85),
+      ],
+      etapasConfiguradas: true,
+      desatualizado: false,
+      incompleto: false,
+    };
+  }
+  if (aba === 'matriculas') {
+    const comp = (chave: string, atual: number, anterior: number) => ({
+      chave,
+      rotulo: chave,
+      atual,
+      anterior,
+      variacao: Math.round(((atual - anterior) * 1000) / anterior) / 10,
+    });
+    return {
+      anoLetivo: ANO,
+      agrupamento: 'ETAPA',
+      total: ind(1240, 1182, 4.9),
+      turmas: ind(52, 50, 4),
+      porAno: [ANO - 3, ANO - 2, ANO - 1, ANO].map((ano, i) => ({
+        ano,
+        total: 1050 + i * 64,
+        porGrupo: { INFANTIL: 380 + i * 20, FUNDAMENTAL: 670 + i * 44 },
+      })),
+      porAnoEscolar: [comp('1º ano', 160, 150), comp('2º ano', 148, 151), comp('3º ano', 171, 160)],
+      porEscola: [
+        comp(ESCOLAS_FICTICIAS[0], 480, 440),
+        comp(ESCOLAS_FICTICIAS[1], 410, 412),
+        comp(ESCOLAS_FICTICIAS[2], 350, 330),
+      ],
+      porTurno: [comp('Matutino', 720, 690), comp('Vespertino', 520, 492)],
+      cobertura: [
+        {
+          chave: 'BIOMETRIA',
+          rotulo: 'Rosto cadastrado no leitor',
+          com: 1190,
+          total: 1240,
+          percentual: 96,
+          disponivel: true,
+        },
+        {
+          chave: 'VEICULO',
+          rotulo: 'Com veículo no cadastro',
+          com: 1004,
+          total: 1240,
+          percentual: 81,
+          disponivel: true,
+        },
+        {
+          chave: 'RESPONSAVEL',
+          rotulo: 'Com responsável vinculado',
+          com: 0,
+          total: 0,
+          percentual: null,
+          disponivel: false,
+        },
+      ],
+      desatualizado: false,
+      incompleto: false,
+    };
+  }
+  return {
+    periodo,
+    referencia,
+    granularidade: 'DIA',
+    janelaMin: 40,
+    embarques: ind(4120, 3980, 3.5),
+    viagens: ind(180, 176, 2.3),
+    tempoMedioMin: ind(27.4, 29.1, -1.7),
+    noPrazo: ind(93.8, 91.2, 2.6),
+    serie: dias.map((inicio, i) => ({
+      inicio,
+      embarques: Math.round(onda(i, 206, 14)),
+      tempoMedioMin: onda(i + 3, 27, 2),
+      noPrazo: onda(i, 93, 3),
+      alertas: i % 4 === 0 ? 2 : 1,
+      criticos: i % 6 === 0 ? 1 : 0,
+    })),
+    serieReferencia: dias.map((inicio, i) => ({
+      inicio,
+      embarques: Math.round(onda(i + 1, 198, 12)),
+      tempoMedioMin: 29,
+      noPrazo: 91,
+      alertas: 0,
+      criticos: 0,
+    })),
+    veiculos: [
+      {
+        id: 7,
+        placa: 'AAA0A07',
+        prefixo: 'P-07',
+        viagens: 20,
+        embarques: 1460,
+        semChegada: 3,
+        tempoMedioMin: 25.1,
+        noPrazo: 97.2,
+        alertas: 2,
+      },
+      {
+        id: 8,
+        placa: 'BBB0B08',
+        prefixo: 'P-08',
+        viagens: 20,
+        embarques: 1390,
+        semChegada: 9,
+        tempoMedioMin: 28.9,
+        noPrazo: 91.4,
+        alertas: 5,
+      },
+      {
+        id: 9,
+        placa: 'CCC0C09',
+        prefixo: 'P-09',
+        viagens: 19,
+        embarques: 1270,
+        semChegada: 14,
+        tempoMedioMin: 31.6,
+        noPrazo: 82.7,
+        alertas: 9,
+      },
+    ],
+    alertas: {
+      total: ind(26, 31, -16.1),
+      abertos: 4,
+      porSeveridade: { CRITICO: 4, ATENCAO: 15, INFO: 7 },
+      porTipo: {
+        LEITOR_SEM_LEITURA: 11,
+        EMBARCOU_SEM_CHEGADA: 4,
+        CHEGOU_SEM_EMBARQUE: 7,
+        LOTACAO: 4,
+      },
+      tempoMedioResolucaoMin: 38.5,
+    },
+    desatualizado: false,
+    incompleto: false,
+  };
+}
+
 const USUARIO = {
   id: 1,
   nome: 'Gestora Fictícia',
@@ -188,6 +397,8 @@ export async function simularApi(page: Page): Promise<ApiSimulada> {
         escolas: [{ id: 1, nome: 'Escola Modelo Fictícia' }],
         anosEscolares: ['3º ano'],
         turmas: [{ id: 11, nome: '3º A', escolaId: 1, anoEscolar: '3º ano' }],
+        etapas: ['INFANTIL', 'FUNDAMENTAL'],
+        turnos: ['Matutino', 'Vespertino'],
         desatualizado: false,
       });
     }
@@ -406,6 +617,11 @@ export async function simularApi(page: Page): Promise<ApiSimulada> {
       });
     }
     if (caminho === '/relatorios/agendados') return json([]);
+
+    if (caminho.startsWith('/analises/')) {
+      chamadas.push(`ANALISE ${caminho}?${url.searchParams.toString()}`);
+      return json(analise(caminho.slice('/analises/'.length)));
+    }
 
     return json({ type: 'urn:rota-segura:erro:nao-simulado', title: caminho, status: 404 }, 404);
   });

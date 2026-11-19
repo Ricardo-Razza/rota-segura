@@ -22,11 +22,13 @@ describe('App', () => {
     const features = (area?.children ?? []).filter((rota) => rota.path);
     expect(features.map((rota) => rota.path)).toEqual([
       'dashboard',
+      'escolas',
       'presenca',
       'jornada',
       'veiculos',
       'alertas',
       'alunos',
+      'analises',
       'relatorios',
     ]);
     expect(features.every((rota) => typeof rota.loadChildren === 'function')).toBe(true);
