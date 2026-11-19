@@ -121,33 +121,33 @@ const PENDENCIA: Record<TipoPendencia, string> = {
           <!-- Só cria a lista quando o card a mostra: criada escondida (carregando), a rolagem virtual
                mede altura zero e desenha só as primeiras linhas, cortando a lista. -->
           @if (estadoLista() === 'ok' || estadoLista() === 'desatualizado') {
-          <cdk-virtual-scroll-viewport
-            itemSize="64"
-            class="viewport"
-            (scrolledIndexChange)="aoRolar($event)"
-          >
-            <a
-              *cdkVirtualFor="let item of itens(); trackBy: porId"
-              class="linha"
-              [routerLink]="['/alunos', item.aluno.id]"
-              queryParamsHandling="preserve"
+            <cdk-virtual-scroll-viewport
+              itemSize="64"
+              class="viewport"
+              (scrolledIndexChange)="aoRolar($event)"
             >
-              <span class="rs-avatar" aria-hidden="true">{{ item.aluno.iniciais || '?' }}</span>
-              <span class="quem">
-                <strong>{{ item.aluno.nome || 'Aluno #' + item.aluno.id }}</strong>
-                <span class="rs-nota"
-                  >{{ item.aluno.turma || 'Sem turma' }} · {{ item.aluno.turno || '—' }} ·
-                  {{ item.aluno.escolaNome || '—' }}</span
-                >
-              </span>
-              @if (item.estadoHoje; as e) {
-                <rs-status-badge [texto]="jornada[e].rotulo" [tom]="jornada[e].tom" />
-              }
-              @if (alertasPorAluno().get(item.aluno.id); as n) {
-                <rs-status-badge [texto]="n + ' alerta(s)'" tom="critico" />
-              }
-            </a>
-          </cdk-virtual-scroll-viewport>
+              <a
+                *cdkVirtualFor="let item of itens(); trackBy: porId"
+                class="linha"
+                [routerLink]="['/alunos', item.aluno.id]"
+                queryParamsHandling="preserve"
+              >
+                <span class="rs-avatar" aria-hidden="true">{{ item.aluno.iniciais || '?' }}</span>
+                <span class="quem">
+                  <strong>{{ item.aluno.nome || 'Aluno #' + item.aluno.id }}</strong>
+                  <span class="rs-nota"
+                    >{{ item.aluno.turma || 'Sem turma' }} · {{ item.aluno.turno || '—' }} ·
+                    {{ item.aluno.escolaNome || '—' }}</span
+                  >
+                </span>
+                @if (item.estadoHoje; as e) {
+                  <rs-status-badge [texto]="jornada[e].rotulo" [tom]="jornada[e].tom" />
+                }
+                @if (alertasPorAluno().get(item.aluno.id); as n) {
+                  <rs-status-badge [texto]="n + ' alerta(s)'" tom="critico" />
+                }
+              </a>
+            </cdk-virtual-scroll-viewport>
           }
         </rs-chart-card>
       } @else {
