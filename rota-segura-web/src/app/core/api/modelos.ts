@@ -49,6 +49,8 @@ export interface Passo {
   veiculoId: number | null;
   escolaId: number | null;
   estadoResultante: EstadoJornada;
+  /** Leitura que gerou o passo (para buscar o local); nula em dados antigos. */
+  leituraId: number | null;
 }
 
 export interface JornadaDoDia {
@@ -550,5 +552,28 @@ export interface AnaliseFrota {
     tempoMedioResolucaoMin: number | null;
   };
   desatualizado: boolean;
+  incompleto: boolean;
+}
+
+/** Um passo da jornada com o local da leitura (nulo quando o leitor não mandou coordenada). */
+export interface LocalDoPasso {
+  dataHora: string;
+  tipo: TipoLeitor;
+  veiculoId: number | null;
+  escolaId: number | null;
+  estadoResultante: EstadoJornada;
+  latitude: number | null;
+  longitude: number | null;
+  /** Situação do aviso ao responsável, como a API descreve. */
+  statusNotificacao: string | null;
+}
+
+/** Onde o aluno embarcou e chegou num dia. Cada consulta é auditada no backend. */
+export interface LocaisDoDia {
+  alunoId: number;
+  data: string;
+  passos: LocalDoPasso[];
+  desatualizado: boolean;
+  /** Algum detalhe não pôde ser lido da API externa. */
   incompleto: boolean;
 }

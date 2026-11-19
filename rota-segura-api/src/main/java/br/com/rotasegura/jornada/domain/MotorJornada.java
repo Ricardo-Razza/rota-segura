@@ -154,7 +154,8 @@ public final class MotorJornada {
 
         private void registrarPasso(Leitura leitura, Leitor leitor) {
             Long veiculoDoPasso = leitura.veiculoId() != null ? leitura.veiculoId() : leitor.veiculoId();
-            passos.add(new Passo(leitura.dataHora(), leitor.tipo(), leitor.id(), veiculoDoPasso, leitor.escolaId(), estado));
+            passos.add(new Passo(leitura.dataHora(), leitor.tipo(), leitor.id(), veiculoDoPasso, leitor.escolaId(), estado,
+                    leitura.id()));
         }
 
         JornadaDoDia resultado() {

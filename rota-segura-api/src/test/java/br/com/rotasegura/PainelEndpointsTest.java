@@ -145,6 +145,48 @@ class PainelEndpointsTest {
     }
 
     @Test
+    void locaisDaJornadaRespeitamEscopoSaoAuditadosEAceitamLeituraSemCoordenada() throws Exception {
+        // Coordenadas fictícias; a leitura 2 vem com "0" (leitor sem GPS) e deve virar nula.
+        when(presencas.buscarPorId(1)).thenReturn(new ResultadoCache<>(
+                new PresencaDto("1", "101", DIA + " 07:00:00", "7", "11", null, "-10.1234", "-50,5678",
+                        "Enviada"), OBTIDO, false));
+        when(presencas.buscarPorId(2)).thenReturn(new ResultadoCache<>(
+                new PresencaDto("2", "101", DIA + " 07:25:00", null, "21", null, "0", "0", " "), OBTIDO, true));
+        long antes = acessos(AcaoAuditoria.ACESSO_LOCAL_EMBARQUE);
+
+        mvc.perform(get("/api/v1/alunos/101/jornadas/" + DIA + "/locais").with(diretorDa(50)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.passos", hasSize(2)))
+                .andExpect(jsonPath("$.passos[0].tipo").value("EMBARQUE"))
+                .andExpect(jsonPath("$.passos[0].latitude").value(-10.1234))
+                .andExpect(jsonPath("$.passos[0].longitude").value(-50.5678))
+                .andExpect(jsonPath("$.passos[0].statusNotificacao").value("Enviada"))
+                .andExpect(jsonPath("$.passos[1].tipo").value("CHEGADA"))
+                .andExpect(jsonPath("$.passos[1].latitude").doesNotExist())
+                .andExpect(jsonPath("$.passos[1].statusNotificacao").doesNotExist())
+                .andExpect(jsonPath("$.desatualizado").value(true))
+                .andExpect(jsonPath("$.incompleto").value(false));
+        assertThat(acessos(AcaoAuditoria.ACESSO_LOCAL_EMBARQUE)).isEqualTo(antes + 1);
+
+        mvc.perform(get("/api/v1/alunos/101/jornadas/" + DIA + "/locais").with(diretorDa(60)))
+                .andExpect(status().isForbidden());
+        assertThat(acessos(AcaoAuditoria.ACESSO_LOCAL_EMBARQUE)).isEqualTo(antes + 1);
+    }
+
+    @Test
+    void locaisDaJornadaMarcamIncompletoQuandoODetalheFalha() throws Exception {
+        when(presencas.buscarPorId(1)).thenThrow(new ApiExternaIndisponivelException("presenca_escolar", null));
+        when(presencas.buscarPorId(2)).thenReturn(new ResultadoCache<>(
+                new PresencaDto("2", "101", DIA + " 07:25:00", null, "21", null, null, null, null), OBTIDO, false));
+
+        mvc.perform(get("/api/v1/alunos/101/jornadas/" + DIA + "/locais").with(perfil("GESTAO")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.passos", hasSize(2)))
+                .andExpect(jsonPath("$.passos[0].latitude").doesNotExist())
+                .andExpect(jsonPath("$.incompleto").value(true));
+    }
+
+    @Test
     void perfilDoAlunoEhAuditadoENaoExpoeCpf() throws Exception {
         long antes = acessosAoPerfil();
 
@@ -243,7 +285,11 @@ class PainelEndpointsTest {
     }
 
     private long acessosAoPerfil() {
-        return auditoria.findByAcaoOrderByOcorridoEmDesc(AcaoAuditoria.ACESSO_PERFIL_ALUNO).stream()
+        return acessos(AcaoAuditoria.ACESSO_PERFIL_ALUNO);
+    }
+
+    private long acessos(AcaoAuditoria acao) {
+        return auditoria.findByAcaoOrderByOcorridoEmDesc(acao).stream()
                 .map(RegistroAuditoria::getEntidadeId).filter("101"::equals).count();
     }
 

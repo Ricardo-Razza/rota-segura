@@ -262,6 +262,7 @@ const jornada = (alunoId: number, estado: string, chegada: string | null) => ({
       dataHora: `${DIA}T07:05:00`,
       tipo: 'EMBARQUE',
       leitorId: 501,
+      leituraId: 9001,
       veiculoId: 7,
       escolaId: null,
       estadoResultante: 'EMBARCADO',
@@ -272,6 +273,7 @@ const jornada = (alunoId: number, estado: string, chegada: string | null) => ({
             dataHora: chegada,
             tipo: 'CHEGADA',
             leitorId: 601,
+            leituraId: 9002,
             veiculoId: null,
             escolaId: 1,
             estadoResultante: 'NA_ESCOLA',
@@ -507,6 +509,46 @@ export async function simularApi(page: Page): Promise<ApiSimulada> {
         ],
         situacaoResponsaveis: { pronto: true, completo: true },
         desatualizado: false,
+      });
+    }
+    const locais = caminho.match(/^\/alunos\/(\d+)\/jornadas\/([\d-]+)\/locais$/);
+    if (locais) {
+      // Coordenadas inventadas (ponto qualquer no centro do mapa); a chegada vem sem GPS.
+      const j = JORNADAS.find((x) => x.aluno.id === Number(locais[1]))?.jornada;
+      return json({
+        alunoId: Number(locais[1]),
+        data: locais[2],
+        passos: (j?.passos ?? []).map((p, i) => ({
+          dataHora: p.dataHora,
+          tipo: p.tipo,
+          veiculoId: p.veiculoId,
+          escolaId: p.escolaId,
+          estadoResultante: p.estadoResultante,
+          latitude: i === 0 ? -15.7801 : null,
+          longitude: i === 0 ? -47.9292 : null,
+          statusNotificacao: i === 0 ? 'Enviado' : null,
+        })),
+        desatualizado: false,
+        incompleto: false,
+      });
+    }
+    const rastreio = caminho.match(/^\/veiculos\/(\d+)\/rastreamento$/);
+    if (rastreio) {
+      const em = (h: string) => new Date(`${DIA}T${h}`).toISOString();
+      return json({
+        veiculoId: Number(rastreio[1]),
+        escolaId: 1,
+        posicao: null,
+        atrasada: true,
+        falhando: false,
+        distanciaEscolaM: null,
+        naCercaDaEscola: false,
+        naCercaDesde: null,
+        rastro: [
+          { latitude: -15.7801, longitude: -47.9292, em: em('07:05:00') },
+          { latitude: -15.7852, longitude: -47.9221, em: em('07:15:00') },
+          { latitude: -15.7905, longitude: -47.9163, em: em('07:25:00') },
+        ],
       });
     }
     if (/^\/alunos\/\d+\/jornadas$/.test(caminho)) {

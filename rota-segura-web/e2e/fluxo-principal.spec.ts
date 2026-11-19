@@ -29,6 +29,13 @@ test('login, jornada, perfil do aluno, alerta resolvido e CSV exportado', async 
   const painel = page.getByRole('dialog', { name: 'Ana Exemplo' });
   await expect(painel).toBeVisible();
   await expect(painel.getByText('leitor #501')).toBeVisible();
+  // Onde embarcou: mapa com o ponto do leitor e o aviso ao responsável; só ids e data na URL
+  await painel.getByRole('heading', { name: 'Onde embarcou e chegou' }).scrollIntoViewIfNeeded();
+  await expect(painel.getByText('aviso ao responsável: Enviado')).toBeVisible();
+  await expect(painel.locator('.rs-marcador-jornada')).toHaveCount(1);
+  expect(api.chamadas.some((c) => /^GET \/alunos\/101\/jornadas\/[\d-]+\/locais$/.test(c))).toBe(
+    true,
+  );
 
   // Perfil do aluno
   await painel.getByRole('link', { name: 'Abrir perfil do aluno' }).click();

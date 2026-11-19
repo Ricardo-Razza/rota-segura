@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { forkJoin, map } from 'rxjs';
 import { carga } from '../../core/api/carga';
@@ -10,6 +10,7 @@ import { ChartCard } from '../../shared/ui/chart-card';
 import { KpiCard } from '../../shared/ui/kpi-card';
 import { StatusBadge } from '../../shared/ui/status-badge';
 import { JORNADA } from '../../shared/ui/tom';
+import { MapaJornada } from '../jornada/mapa-jornada';
 import { avaliarRisco, janelasDeHistorico, ultimosDias } from './alunos.logica';
 
 /** 90 dias letivos cabem em ~130 dias corridos (fins de semana e feriados). */
@@ -20,7 +21,7 @@ const DIAS_LETIVOS = 90;
 import { Icone } from '../../shared/ui/icone';
 @Component({
   selector: 'rs-perfil-aluno',
-  imports: [Icone, ChartCard, KpiCard, StatusBadge, RouterLink],
+  imports: [Icone, ChartCard, KpiCard, StatusBadge, RouterLink, MapaJornada],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="rs-pagina">
@@ -135,11 +136,28 @@ import { Icone } from '../../shared/ui/icone';
               <li>
                 <span class="rs-mono">{{ dataCurta(d.data) }}</span>
                 <rs-status-badge [texto]="jornada[d.estado].rotulo" [tom]="jornada[d.estado].tom" />
-                <span class="rs-nota"
+                <span class="rs-nota quem"
                   >{{ hora(d.embarqueEm) }} → {{ hora(d.chegadaEm) }} ·
                   {{ minutos(d.tempoTrajetoMin) }}</span
                 >
+                @if (d.passos.length) {
+                  <button
+                    type="button"
+                    class="rs-botao rs-botao--pequeno"
+                    [attr.aria-expanded]="diaNoMapa() === d.data"
+                    [attr.aria-label]="'Ver no mapa onde embarcou e chegou em ' + dataCurta(d.data)"
+                    (click)="alternarMapa(d.data)"
+                  >
+                    <rs-icone nome="mapa" [tamanho]="14" />
+                    Mapa
+                  </button>
+                }
               </li>
+              @if (diaNoMapa() === d.data) {
+                <li class="no-mapa">
+                  <rs-mapa-jornada [alunoId]="alunoId()" [data]="d.data" />
+                </li>
+              }
             }
           </ul>
         </rs-chart-card>
@@ -247,6 +265,9 @@ import { Icone } from '../../shared/ui/icone';
       height: 10px;
       margin-left: 8px;
     }
+    .no-mapa {
+      display: block;
+    }
     .quem {
       flex: 1;
     }
@@ -265,7 +286,13 @@ export class PerfilAluno {
   private readonly hoje = isoLocal(new Date());
 
   protected readonly podeRevelar = computed(() => this.auth.usuario()?.podeRevelarContato === true);
-  private readonly alunoId = computed(() => Number(this.id()));
+  protected readonly alunoId = computed(() => Number(this.id()));
+  /** Dia do histórico com o mapa aberto (um por vez: cada abertura é uma consulta auditada). */
+  protected readonly diaNoMapa = signal<string | null>(null);
+
+  protected alternarMapa(data: string): void {
+    this.diaNoMapa.update((atual) => (atual === data ? null : data));
+  }
 
   protected readonly perfil = carga(() => this.api.perfilAluno(this.alunoId()));
   protected readonly historico = carga(

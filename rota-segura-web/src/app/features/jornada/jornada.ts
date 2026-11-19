@@ -27,6 +27,7 @@ import {
   pertence,
   porColuna,
 } from './jornada.logica';
+import { MapaJornada } from './mapa-jornada';
 
 /** Tamanho máximo pedido ao backend por quadro (o limite do servidor é 200). */
 const TAMANHO = 200;
@@ -35,7 +36,7 @@ const TAMANHO = 200;
 import { Icone } from '../../shared/ui/icone';
 @Component({
   selector: 'rs-jornada',
-  imports: [Icone, ChartCard, StatusBadge, IndicadorConexao],
+  imports: [Icone, ChartCard, StatusBadge, IndicadorConexao, MapaJornada],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="rs-pagina">
@@ -199,6 +200,14 @@ import { Icone } from '../../shared/ui/icone';
             Leituras ignoradas: {{ linha.jornada.leiturasIgnoradas.duplicadas }} duplicadas,
             {{ linha.jornada.leiturasIgnoradas.foraDeOrdem }} fora de ordem.
           </p>
+        }
+        @if (linha.jornada.passos.length) {
+          <h3>Onde embarcou e chegou</h3>
+          @defer (on viewport) {
+            <rs-mapa-jornada [alunoId]="linha.aluno.id" [data]="dia()" />
+          } @placeholder {
+            <p class="rs-nota">Mapa do embarque</p>
+          }
         }
         <p>
           <a

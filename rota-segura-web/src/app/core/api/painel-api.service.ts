@@ -21,7 +21,9 @@ import {
   PresencaPeriodo,
   PreviaRelatorio,
   QuadroDoDia,
+  LocaisDoDia,
   RastreamentoAoVivo,
+  RastreioVeiculo,
   ResultadoSincronizacao,
   ResumoAlertas,
   ResumoDashboard,
@@ -96,6 +98,16 @@ export class PainelApi {
   /** GPS ao vivo (posição, rastro do dia e cerca); depois disso chega pelo evento SSE `veiculo.posicao`. */
   rastreamento(): Observable<RastreamentoAoVivo> {
     return this.http.get<RastreamentoAoVivo>(`${API}/veiculos/rastreamento`, LEITURA);
+  }
+
+  /** Rastro do dia de um veículo (o backend só guarda o de hoje). */
+  rastreamentoDoVeiculo(id: number): Observable<RastreioVeiculo> {
+    return this.http.get<RastreioVeiculo>(`${API}/veiculos/${id}/rastreamento`, LEITURA);
+  }
+
+  /** Onde o aluno embarcou e chegou no dia. Só ids e data vão na URL; a consulta é auditada. */
+  locaisDaJornada(alunoId: number, data: string): Observable<LocaisDoDia> {
+    return this.http.get<LocaisDoDia>(`${API}/alunos/${alunoId}/jornadas/${data}/locais`, LEITURA);
   }
 
   leitores(filtros: Parametros): Observable<SaudeDosLeitores> {

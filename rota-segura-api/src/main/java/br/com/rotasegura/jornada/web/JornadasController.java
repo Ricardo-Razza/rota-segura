@@ -3,6 +3,8 @@ package br.com.rotasegura.jornada.web;
 import br.com.rotasegura.alunos.application.FiltroAlunos;
 import br.com.rotasegura.jornada.application.JornadasPainelService;
 import br.com.rotasegura.jornada.application.JornadasPainelService.QuadroDoDia;
+import br.com.rotasegura.jornada.application.LocaisDaJornadaService;
+import br.com.rotasegura.jornada.application.LocaisDaJornadaService.LocaisDoDia;
 import br.com.rotasegura.jornada.domain.JornadaDoDia;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -22,9 +24,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class JornadasController {
 
     private final JornadasPainelService painel;
+    private final LocaisDaJornadaService locais;
 
-    public JornadasController(JornadasPainelService painel) {
+    public JornadasController(JornadasPainelService painel, LocaisDaJornadaService locais) {
         this.painel = painel;
+        this.locais = locais;
     }
 
     @GetMapping("/jornadas")
@@ -45,5 +49,12 @@ public class JornadasController {
                                @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
                                LocalDate fim) {
         return painel.doAluno(id, inicio, fim);
+    }
+
+    @GetMapping("/alunos/{id}/jornadas/{data}/locais")
+    @Operation(summary = "Onde o aluno embarcou e chegou no dia (local de cada leitura). Consulta auditada.")
+    LocaisDoDia locais(@PathVariable long id,
+                       @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate data) {
+        return locais.doAluno(id, data);
     }
 }
