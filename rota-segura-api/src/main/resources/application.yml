@@ -34,6 +34,8 @@ rota-segura:
     cadastros-ttl: 10m
     tempo-real-ttl: 30s
     ultimo-valor-ttl: 24h
+    # Vencido o TTL, o valor ainda é servido na hora por até este tempo enquanto atualiza em segundo plano.
+    janela-revalidacao: 30m
   jornada:
     zona: ${ROTA_ZONA:America/Sao_Paulo}
     # Embarcado há mais que isso sem passar no leitor da escola → EMBARCOU_SEM_CHEGADA (crítico).

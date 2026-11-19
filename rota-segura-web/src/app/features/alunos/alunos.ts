@@ -118,6 +118,9 @@ const PENDENCIA: Record<TipoPendencia, string> = {
           mensagemVazio="Nenhum aluno encontrado."
           (tentarDeNovo)="recarregar()"
         >
+          <!-- Só cria a lista quando o card a mostra: criada escondida (carregando), a rolagem virtual
+               mede altura zero e desenha só as primeiras linhas, cortando a lista. -->
+          @if (estadoLista() === 'ok' || estadoLista() === 'desatualizado') {
           <cdk-virtual-scroll-viewport
             itemSize="64"
             class="viewport"
@@ -145,6 +148,7 @@ const PENDENCIA: Record<TipoPendencia, string> = {
               }
             </a>
           </cdk-virtual-scroll-viewport>
+          }
         </rs-chart-card>
       } @else {
         <rs-filter-chips
