@@ -10,6 +10,7 @@ import {
   aplicarPosicao,
   aplicarPosicoes,
   avancarReplay,
+  avisoSemReplay,
   distancia,
   filtrarVeiculos,
   hojeIso,
@@ -288,6 +289,13 @@ describe('veículos', () => {
       // Nunca passa do último ponto.
       expect(avancarReplay(t, t[4], 60_000)).toBe(t[4]);
       expect(avancarReplay([], 5, 1000)).toBe(5);
+    });
+
+    it('explica quando o dia não tem caminho para reproduzir', () => {
+      expect(avisoSemReplay(0)).toBeNull();
+      expect(avisoSemReplay(1)).toContain('Só 1 posição de GPS');
+      expect(avisoSemReplay(2)).toBeNull();
+      expect(avisoSemReplay(250)).toBeNull();
     });
 
     it('data de hoje no formato do campo de data', () => {

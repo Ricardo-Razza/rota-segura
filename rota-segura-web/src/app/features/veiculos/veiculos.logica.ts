@@ -298,3 +298,18 @@ export function avancarReplay(tempos: number[], atual: number, avancoMs: number)
   }
   return proximo;
 }
+
+/**
+ * Aviso para o dia que tem posição mas não tem caminho: com 1 ponto só, o ônibus não andou (o rastro só
+ * ganha ponto depois de alguns metros) ou o painel não estava gravando o GPS no horário da rota.
+ * Sem pontos o cartão já mostra o estado vazio; com 2 ou mais há o que reproduzir.
+ */
+export function avisoSemReplay(pontos: number): string | null {
+  if (pontos !== 1) {
+    return null;
+  }
+  return (
+    'Só 1 posição de GPS neste dia, então não há caminho para reproduzir: o ônibus ficou parado ' +
+    'ou o GPS não estava sendo gravado no horário da rota.'
+  );
+}

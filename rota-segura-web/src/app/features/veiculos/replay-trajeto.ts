@@ -22,6 +22,7 @@ import { CONFIG_MAPA } from './mapa.config';
 import {
   VELOCIDADES_REPLAY,
   avancarReplay,
+  avisoSemReplay,
   hojeIso,
   instante,
   posicaoNoInstante,
@@ -69,46 +70,56 @@ function cor(token: string): string {
         aria-label="Mapa do replay: caminho do ônibus no dia, posição no momento escolhido e embarques"
       ></div>
       @if (trajeto.dados(); as t) {
-        <div class="controles">
-          <button
-            type="button"
-            class="rs-botao rs-botao--pequeno"
-            [attr.aria-label]="tocando() ? 'Pausar replay' : 'Reproduzir replay'"
-            (click)="alternar()"
-          >
-            <rs-icone [nome]="tocando() ? 'pause' : 'play'" />
-          </button>
-          <label class="linha-tempo">
-            <span class="rs-somente-leitor">Momento do replay</span>
-            <input
-              type="range"
-              [min]="inicio()"
-              [max]="fim()"
-              [step]="1000"
-              [value]="cursor()"
-              [attr.aria-valuetext]="horaCursor()"
-              (input)="arrastar(+$any($event.target).value)"
-            />
-          </label>
-          <strong class="rs-mono" aria-live="off">{{ horaCursor() }}</strong>
-          <div class="velocidades" role="group" aria-label="Velocidade do replay">
-            @for (v of velocidades; track v) {
-              <button
-                type="button"
-                class="rs-botao rs-botao--pequeno"
-                [attr.aria-pressed]="velocidade() === v"
-                [title]="v + ' min de trajeto por segundo'"
-                (click)="velocidade.set(v)"
-              >
-                {{ v }}×
-              </button>
-            }
+        @if (aviso(); as texto) {
+          <p class="aviso" role="status">
+            {{ texto }} Posição registrada às {{ hora(t.pontos[0]?.em) }}.
+          </p>
+        } @else {
+          <div class="controles">
+            <button
+              type="button"
+              class="rs-botao rs-botao--pequeno"
+              [attr.aria-label]="tocando() ? 'Pausar replay' : 'Reproduzir replay'"
+              (click)="alternar()"
+            >
+              <rs-icone [nome]="tocando() ? 'pause' : 'play'" />
+            </button>
+            <label class="linha-tempo">
+              <span class="rs-somente-leitor">Momento do replay</span>
+              <input
+                type="range"
+                [min]="inicio()"
+                [max]="fim()"
+                [step]="1000"
+                [value]="cursor()"
+                [attr.aria-valuetext]="horaCursor()"
+                (input)="arrastar(+$any($event.target).value)"
+              />
+            </label>
+            <strong class="rs-mono" aria-live="off">{{ horaCursor() }}</strong>
+            <div class="velocidades" role="group" aria-label="Velocidade do replay">
+              @for (v of velocidades; track v) {
+                <button
+                  type="button"
+                  class="rs-botao rs-botao--pequeno"
+                  [attr.aria-pressed]="velocidade() === v"
+                  [title]="v + ' min de trajeto por segundo'"
+                  (click)="velocidade.set(v)"
+                >
+                  {{ v }}×
+                </button>
+              }
+            </div>
           </div>
-        </div>
+        }
         <p class="rs-nota">
-          {{ t.pontos.length }} pontos de GPS de {{ hora(t.pontos[0]?.em) }} a
-          {{ hora(t.pontos[t.pontos.length - 1]?.em) }} · {{ embarcados() }} de
-          {{ t.embarques.length }} embarque(s) até agora
+          @if (aviso()) {
+            {{ t.embarques.length }} embarque(s) no dia
+          } @else {
+            {{ t.pontos.length }} pontos de GPS de {{ hora(t.pontos[0]?.em) }} a
+            {{ hora(t.pontos[t.pontos.length - 1]?.em) }} · {{ embarcados() }} de
+            {{ t.embarques.length }} embarque(s) até agora
+          }
           @if (semLocal() > 0) {
             · {{ semLocal() }} sem local (sem GPS naquela hora)
           }
@@ -145,6 +156,14 @@ function cor(token: string): string {
       flex-wrap: wrap;
       gap: 10px;
       margin-top: 10px;
+    }
+    .aviso {
+      margin: 10px 0 0;
+      padding: 10px 12px;
+      border-radius: var(--raio-sm);
+      border: 1px solid var(--borda);
+      background: var(--superficie-sutil);
+      font-size: 13px;
     }
     .linha-tempo {
       flex: 1;
@@ -226,6 +245,9 @@ export class ReplayTrajeto implements OnDestroy {
   protected readonly embarcados = computed(
     () =>
       (this.trajeto.dados()?.embarques ?? []).filter((e) => instante(e.em) <= this.cursor()).length,
+  );
+  protected readonly aviso = computed(() =>
+    avisoSemReplay(this.trajeto.dados()?.pontos.length ?? 0),
   );
   protected readonly semLocal = computed(
     () => (this.trajeto.dados()?.embarques ?? []).filter((e) => e.latitude === null).length,
