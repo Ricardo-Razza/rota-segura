@@ -32,7 +32,8 @@ public class PresencaClient {
     }
 
     public ResultadoCache<ColecaoPaginada<PresencaDto>> listarTodas() {
-        return api.todas(Recurso.PRESENCA, CAMINHO, PAGINA);
+        // As leituras novas entram no fim: só as últimas páginas são relidas a cada ciclo.
+        return api.todasIncremental(Recurso.PRESENCA, CAMINHO, PAGINA);
     }
 
     public ResultadoCache<PresencaDto> buscarPorId(long id) {

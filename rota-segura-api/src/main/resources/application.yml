@@ -1,6 +1,12 @@
 server:
   # Atrás do nginx (docker-compose) use "native" para auditoria e rate limit verem o IP real.
   forward-headers-strategy: ${ROTA_FORWARD_HEADERS:none}
+  # Respostas JSON comprimidas (listas de alunos e jornadas encolhem bastante). O SSE (text/event-stream)
+  # fica de fora: comprimido, os eventos ficariam presos no buffer.
+  compression:
+    enabled: true
+    mime-types: application/json,application/problem+json
+    min-response-size: 2KB
 
 spring:
   application:
@@ -30,6 +36,8 @@ rota-segura:
     read-timeout: 5s
     max-paginas: ${ROTA_API_MAX_PAGINAS:200}
     parametro-pagina: page
+    # Presença: as páginas antigas (já completas) só são relidas por inteiro neste intervalo.
+    revalidacao-completa: ${ROTA_API_REVALIDACAO_COMPLETA:30m}
   cache:
     cadastros-ttl: 10m
     tempo-real-ttl: 30s
@@ -82,6 +90,8 @@ rota-segura:
     max-pontos-rastro: 3000
     # Trajeto guardado no banco (para achar o local de cada embarque); depois disso é apagado.
     retencao: ${ROTA_RASTREAMENTO_RETENCAO:90d}
+    # Rastreadores consultados ao mesmo tempo: um lento ou fora do ar não atrasa os outros.
+    consultas-simultaneas: 8
   alertas:
     avaliacao-habilitada: ${ROTA_ALERTAS_HABILITADOS:true}
     intervalo: 30s

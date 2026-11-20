@@ -15,11 +15,13 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param distanciaMinimaM    deslocamento mínimo para um novo ponto entrar no rastro
  * @param maxPontosRastro     teto de pontos guardados por veículo no dia (os mais antigos saem)
  * @param retencao            por quanto tempo o trajeto fica no banco antes de ser apagado
+ * @param consultasSimultaneas quantos rastreadores são consultados ao mesmo tempo em cada rodada
  */
 @ConfigurationProperties("rota-segura.rastreamento")
 public record RastreamentoProperties(Boolean habilitado, Duration intervalo, Integer raioEscolaM,
                                      Duration tempoDesembarque, Duration limitePosicaoAtrasada,
-                                     Integer distanciaMinimaM, Integer maxPontosRastro, Duration retencao) {
+                                     Integer distanciaMinimaM, Integer maxPontosRastro, Duration retencao,
+                                     Integer consultasSimultaneas) {
 
     public RastreamentoProperties {
         habilitado = habilitado == null || habilitado;
@@ -30,5 +32,6 @@ public record RastreamentoProperties(Boolean habilitado, Duration intervalo, Int
         distanciaMinimaM = distanciaMinimaM == null ? 15 : distanciaMinimaM;
         maxPontosRastro = maxPontosRastro == null ? 3000 : maxPontosRastro;
         retencao = retencao == null ? Duration.ofDays(90) : retencao;
+        consultasSimultaneas = consultasSimultaneas == null || consultasSimultaneas < 1 ? 8 : consultasSimultaneas;
     }
 }

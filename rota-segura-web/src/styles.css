@@ -64,7 +64,8 @@
   --vidro: rgba(15, 28, 48, 0.74);
   --vidro-forte: rgba(15, 28, 48, 0.96);
   --vidro-borda: rgba(174, 186, 201, 0.14);
-  --vidro-desfoque: blur(18px) saturate(140%);
+  /* Desfoque moderado e sem saturate: o filtro é recalculado a cada quadro do mapa que está por baixo. */
+  --vidro-desfoque: blur(12px);
   --vidro-sombra: 0 18px 40px -18px rgba(0, 0, 0, 0.7);
   --fundo-luz: radial-gradient(120% 80% at 70% -10%, #12305a 0%, rgba(7, 17, 31, 0) 60%);
   --realce: #eef2f8;
@@ -115,6 +116,21 @@
   --realce: #0f1d33;
   --texto-sobre-realce: #ffffff;
   color-scheme: light;
+}
+
+/*
+ * Modo leve: máquina modesta (ver core/desempenho/modo-leve.ts) ou quem pediu menos transparência no sistema.
+ * O vidro vira superfície quase opaca, sem desfoque, que é o efeito que mais pesa na GPU.
+ */
+:root[data-leve] {
+  --vidro: var(--vidro-forte);
+  --vidro-desfoque: none;
+}
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --vidro: var(--vidro-forte);
+    --vidro-desfoque: none;
+  }
 }
 
 *,

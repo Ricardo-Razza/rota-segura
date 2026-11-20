@@ -16,5 +16,13 @@ public record ApiExternaProperties(
         @NotNull Duration connectTimeout,
         @NotNull Duration readTimeout,
         @Min(1) int maxPaginas,
-        @NotBlank String parametroPagina) {
+        @NotBlank String parametroPagina,
+        Duration revalidacaoCompleta) {
+
+    /** Sem valor configurado, as páginas antigas da presença são relidas por inteiro a cada 30 min. */
+    public ApiExternaProperties {
+        if (revalidacaoCompleta == null) {
+            revalidacaoCompleta = Duration.ofMinutes(30);
+        }
+    }
 }

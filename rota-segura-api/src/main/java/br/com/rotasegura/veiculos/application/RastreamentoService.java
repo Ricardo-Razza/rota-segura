@@ -28,7 +28,12 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -103,7 +108,8 @@ public class RastreamentoService {
 
     /**
      * Uma rodada: consulta o rastreador de cada veículo e publica o que mudou.
-     * Falha num veículo não interrompe os outros.
+     * As consultas correm em paralelo (até {@code consultas-simultaneas}), então a rodada dura o tempo do
+     * rastreador mais lento, não a soma de todos. Falha num veículo não interrompe os outros.
      *
      * @return quantos veículos tiveram posição nova
      */
@@ -111,25 +117,44 @@ public class RastreamentoService {
         List<VeiculoDto> cadastro = Optional.ofNullable(veiculos.listarTodos())
                 .map(r -> r.valor().itens()).orElse(List.of());
         Map<Long, Cerca> cercas = cercasPorVeiculo();
+        List<Long> comRastreador = cadastro.stream()
+                .filter(dto -> dto.identificadorRastreador() != null && !dto.identificadorRastreador().isBlank())
+                .map(dto -> Conversoes.paraLong(dto.id()))
+                .filter(Objects::nonNull)
+                .toList();
+        if (comRastreador.isEmpty()) {
+            return 0;
+        }
         int novas = 0;
-        for (VeiculoDto dto : cadastro) {
-            Long id = Conversoes.paraLong(dto.id());
-            if (id == null || dto.identificadorRastreador() == null || dto.identificadorRastreador().isBlank()) {
-                continue;
+        try (ExecutorService consultas = Executors.newFixedThreadPool(
+                Math.min(propriedades.consultasSimultaneas(), comRastreador.size()), Thread.ofVirtual().factory())) {
+            List<Future<Boolean>> rodada = comRastreador.stream()
+                    .map(id -> consultas.submit(() -> atualizarUm(id, cercas.get(id))))
+                    .toList();
+            for (Future<Boolean> f : rodada) {
+                if (Boolean.TRUE.equals(f.get())) {
+                    novas++;
+                }
             }
-            Optional<PosicaoVeiculo> posicao;
-            try {
-                posicao = consultar(id);
-            } catch (RuntimeException e) {
-                marcarFalha(id);
-                LOG.debug("Posição indisponível. veiculo={} motivo={}", id, e.getClass().getSimpleName());
-                continue;
-            }
-            if (posicao.isPresent() && registrar(id, posicao.get(), cercas.get(id))) {
-                novas++;
-            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } catch (ExecutionException e) {
+            LOG.warn("Consulta de posição falhou. motivo={}", e.getCause().getClass().getSimpleName());
         }
         return novas;
+    }
+
+    /** Consulta e registra um veículo; {@code true} se a posição mudou. */
+    private boolean atualizarUm(long id, Cerca cerca) {
+        Optional<PosicaoVeiculo> posicao;
+        try {
+            posicao = consultar(id);
+        } catch (RuntimeException e) {
+            marcarFalha(id);
+            LOG.debug("Posição indisponível. veiculo={} motivo={}", id, e.getClass().getSimpleName());
+            return false;
+        }
+        return posicao.isPresent() && registrar(id, posicao.get(), cerca);
     }
 
     /** Veículos no escopo do usuário, com posição e rastro do dia. */

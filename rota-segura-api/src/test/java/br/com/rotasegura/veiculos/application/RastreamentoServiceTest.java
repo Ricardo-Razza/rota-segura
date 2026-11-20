@@ -32,6 +32,9 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -54,7 +57,7 @@ class RastreamentoServiceTest {
         when(jornada.zona()).thenReturn(ZoneId.of("America/Sao_Paulo"));
         servico = new RastreamentoService(veiculos, dispositivos, eventos, mock(EscopoService.class),
                 Clock.fixed(AGORA, ZoneOffset.UTC), jornada,
-                new RastreamentoProperties(true, null, 300, null, null, null, null, null), salvos);
+                new RastreamentoProperties(true, null, 300, null, null, null, null, null, null), salvos);
         when(veiculos.listarTodos()).thenReturn(atual(List.of(
                 new VeiculoDto("7", "AAA0A07", null, null, "R-7", null, null, "P-07"),
                 new VeiculoDto("8", "BBB0B08", null, null, "R-8", null, null, "P-08"),
@@ -122,6 +125,25 @@ class RastreamentoServiceTest {
         assertThat(r.falhando()).isTrue();
         assertThat(r.atrasada()).as("posição de 30 min atrás").isTrue();
         assertThat(r.posicao()).isNotNull();
+    }
+
+    @Test
+    void rastreadoresSaoConsultadosEmParaleloUmLentoNaoSeguraOsOutros() {
+        // O 7 só responde depois que o 8 for consultado: em sequência, ficaria esperando até o limite.
+        CountDownLatch oitoConsultado = new CountDownLatch(1);
+        AtomicBoolean emParalelo = new AtomicBoolean();
+        when(veiculos.dados(7)).thenAnswer(chamada -> {
+            emParalelo.set(oitoConsultado.await(2, TimeUnit.SECONDS));
+            return dados(-10.01, "2026-03-10T07:59:55-03:00", 0.0);
+        });
+        when(veiculos.dados(8)).thenAnswer(chamada -> {
+            oitoConsultado.countDown();
+            return dados(-10.5, "2026-03-10T07:59:00-03:00", 0.0);
+        });
+
+        assertThat(servico.atualizar()).isEqualTo(2);
+        assertThat(emParalelo).isTrue();
+        assertThat(servico.todos()).containsOnlyKeys(7L, 8L);
     }
 
     @Test

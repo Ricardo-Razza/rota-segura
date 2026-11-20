@@ -3,6 +3,7 @@ import { resultadosLocais } from '../../layout/busca-global';
 import {
   agruparLeitores,
   aplicarPosicao,
+  aplicarPosicoes,
   distancia,
   filtrarVeiculos,
   idadePosicao,
@@ -139,6 +140,21 @@ describe('veículos', () => {
       }
       expect(atual[0].rastro).toHaveLength(3);
       expect(atual[0].rastro[2].em).toBe('2026-03-10T07:05:00');
+    });
+
+    it('posições que chegam juntas são aplicadas de uma vez, na ordem', () => {
+      const lista = aplicarPosicoes(
+        [],
+        [
+          { veiculo: rastreio(7, -10.0, '2026-03-10T07:00:00'), novoPonto: true },
+          { veiculo: rastreio(8, -10.5, '2026-03-10T07:00:02'), novoPonto: true },
+          { veiculo: rastreio(7, -10.01, '2026-03-10T07:00:05'), novoPonto: true },
+        ],
+      );
+      expect(lista.map((r) => r.veiculoId)).toEqual([7, 8]);
+      expect(lista[0].posicao?.registradaEm).toBe('2026-03-10T07:00:05');
+      expect(lista[0].rastro).toHaveLength(2);
+      expect(aplicarPosicoes(lista, [])).toBe(lista);
     });
 
     it('selo do GPS: ao vivo, atrasado e sem sinal', () => {

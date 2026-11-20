@@ -9,7 +9,7 @@ import {
   signal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { auditTime, merge } from 'rxjs';
+import { auditTime, bufferTime, filter, merge } from 'rxjs';
 import { carga } from '../../core/api/carga';
 import { PosicaoAoVivo, RastreioVeiculo } from '../../core/api/modelos';
 import { PainelApi } from '../../core/api/painel-api.service';
@@ -27,16 +27,20 @@ import {
   FAIXA,
   SITUACAO_LEITOR,
   agruparLeitores,
-  aplicarPosicao,
+  aplicarPosicoes,
+  JANELA_POSICOES_MS,
   distancia,
   filtrarVeiculos,
   situacaoGps,
 } from './veiculos.logica';
+import { Icone } from '../../shared/ui/icone';
 
 type Aba = 'veiculos' | 'leitores';
 
+/** O GPS chega a cada 5 s: o "há X s" dos cards anda no mesmo passo. */
+const RELOGIO_MS = 5000;
+
 /** Veículos (status do dia, mapa, detalhe) e saúde dos leitores faciais. Tudo somente leitura. */
-import { Icone } from '../../shared/ui/icone';
 @Component({
   selector: 'rs-veiculos',
   imports: [Icone, ChartCard, FilterChips, StatusBadge, MapaVeiculos, IndicadorConexao],
@@ -453,7 +457,7 @@ export class Veiculos {
   private readonly porVeiculo = computed(
     () => new Map(this.rastreios().map((r) => [r.veiculoId, r])),
   );
-  /** Relógio de 1 s para o "há X s" do GPS andar sozinho. */
+  /** Relógio para o "há X s" do GPS andar sozinho (o GPS chega a cada 5 s; mais rápido não muda nada). */
   private readonly agora = signal(Date.now());
 
   protected readonly filtrados = computed(() =>
@@ -478,9 +482,18 @@ export class Veiculos {
     const sse = inject(SseService);
     sse
       .de<PosicaoAoVivo>('veiculo.posicao')
-      .pipe(takeUntilDestroyed())
-      .subscribe((evento) => this.rastreios.update((lista) => aplicarPosicao(lista, evento)));
-    const relogio = setInterval(() => this.agora.set(Date.now()), 1000);
+      .pipe(
+        bufferTime(JANELA_POSICOES_MS),
+        filter((eventos) => eventos.length > 0),
+        takeUntilDestroyed(),
+      )
+      .subscribe((eventos) => this.rastreios.update((lista) => aplicarPosicoes(lista, eventos)));
+    // Com a aba escondida ninguém vê o "há X s": não recalcula os cards à toa.
+    const relogio = setInterval(() => {
+      if (!document.hidden) {
+        this.agora.set(Date.now());
+      }
+    }, RELOGIO_MS);
     inject(DestroyRef).onDestroy(() => clearInterval(relogio));
     merge(sse.de('veiculo.atualizado'), sse.de('jornada.atualizada'))
       .pipe(auditTime(3000), takeUntilDestroyed())

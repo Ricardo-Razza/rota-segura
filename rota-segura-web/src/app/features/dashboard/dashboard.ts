@@ -8,7 +8,7 @@ import {
 } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { auditTime, merge } from 'rxjs';
+import { auditTime, bufferTime, filter, merge } from 'rxjs';
 import { carga } from '../../core/api/carga';
 import { Alerta, PosicaoAoVivo, RastreioVeiculo, Severidade } from '../../core/api/modelos';
 import { PainelApi } from '../../core/api/painel-api.service';
@@ -27,7 +27,7 @@ import {
   pontosDeEscolas,
 } from '../escolas/escolas.logica';
 import { MapaVeiculos } from '../veiculos/mapa-veiculos';
-import { aplicarPosicao } from '../veiculos/veiculos.logica';
+import { aplicarPosicoes, JANELA_POSICOES_MS } from '../veiculos/veiculos.logica';
 import { ChartCard } from '../../shared/ui/chart-card';
 import { Coluna, DataTable } from '../../shared/ui/data-table';
 import { barrasPorEscola, barrasPorEtapa, linhasMatriculas } from './dashboard.graficos';
@@ -672,8 +672,12 @@ export class Dashboard {
       .subscribe(() => this.veiculos.recarregar(true));
     sse
       .de<PosicaoAoVivo>('veiculo.posicao')
-      .pipe(takeUntilDestroyed())
-      .subscribe((evento) => this.rastreios.update((lista) => aplicarPosicao(lista, evento)));
+      .pipe(
+        bufferTime(JANELA_POSICOES_MS),
+        filter((eventos) => eventos.length > 0),
+        takeUntilDestroyed(),
+      )
+      .subscribe((eventos) => this.rastreios.update((lista) => aplicarPosicoes(lista, eventos)));
   }
 
   protected abrirVeiculo(id: number): void {

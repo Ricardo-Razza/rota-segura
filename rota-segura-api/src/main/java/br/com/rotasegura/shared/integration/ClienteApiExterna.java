@@ -1,6 +1,9 @@
 package br.com.rotasegura.shared.integration;
 
 import br.com.rotasegura.shared.erro.RecursoNaoEncontradoException;
+import java.time.Clock;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
@@ -16,11 +19,15 @@ public class ClienteApiExterna {
     private final RestClient restClient;
     private final ChamadaResiliente chamada;
     private final ApiExternaProperties props;
+    private final Clock clock;
+    private final Map<String, PaginadorIncremental<?>> incrementais = new ConcurrentHashMap<>();
 
-    public ClienteApiExterna(RestClient apiExternaRestClient, ChamadaResiliente chamada, ApiExternaProperties props) {
+    public ClienteApiExterna(RestClient apiExternaRestClient, ChamadaResiliente chamada, ApiExternaProperties props,
+                             Clock clock) {
         this.restClient = apiExternaRestClient;
         this.chamada = chamada;
         this.props = props;
+        this.clock = clock;
     }
 
     /** Uma página do recurso (a primeira é 1). */
@@ -37,6 +44,21 @@ public class ClienteApiExterna {
                 () -> PaginadorApi.buscarTodas(
                         pagina -> chamada.protegida(recurso, () -> getPagina(caminho, pagina, tipo)),
                         props.maxPaginas()));
+    }
+
+    /**
+     * Todas as páginas de um recurso que só cresce no fim (ex.: presença), relendo só as páginas que podem ter
+     * mudado. Mesmo cache e proteção de {@link #todas}; ver {@link PaginadorIncremental}.
+     */
+    @SuppressWarnings("unchecked")
+    public <T> ResultadoCache<ColecaoPaginada<T>> todasIncremental(Recurso recurso, String caminho,
+                                                                   ParameterizedTypeReference<PaginaApi<T>> tipo) {
+        PaginadorIncremental<T> paginador = (PaginadorIncremental<T>) incrementais.computeIfAbsent(caminho,
+                c -> new PaginadorIncremental<T>(props.revalidacaoCompleta()));
+        return chamada.comCache(recurso, caminho + "#todas",
+                () -> paginador.atualizar(
+                        pagina -> chamada.protegida(recurso, () -> getPagina(caminho, pagina, tipo)),
+                        props.maxPaginas(), clock.instant()));
     }
 
     /** Um registro pelo id. */

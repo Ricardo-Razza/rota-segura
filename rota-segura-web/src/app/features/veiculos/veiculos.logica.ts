@@ -98,6 +98,21 @@ export function aplicarPosicao(
   return anterior ? lista.map((r) => (r === anterior ? atualizado : r)) : [...lista, atualizado];
 }
 
+/** Janela em que as posições do SSE são juntadas antes de atualizar a tela (um redesenho por janela). */
+export const JANELA_POSICOES_MS = 1000;
+
+/**
+ * Aplica de uma vez as posições que chegaram juntas. Cada veículo manda uma a cada 5 s; com a frota inteira,
+ * aplicar uma por uma redesenharia o mapa várias vezes por segundo.
+ */
+export function aplicarPosicoes(
+  lista: RastreioVeiculo[],
+  eventos: PosicaoAoVivo[],
+  maxPontos = MAX_PONTOS_RASTRO,
+): RastreioVeiculo[] {
+  return eventos.reduce((atual, evento) => aplicarPosicao(atual, evento, maxPontos), lista);
+}
+
 /** "há 4 s", "há 3 min", "há 2 h", "há 5 d": o GPS chega a cada poucos segundos, então minuto é pouco. */
 export function idadePosicao(iso: string | null | undefined, agora = Date.now()): string {
   const quando = iso ? new Date(iso).getTime() : NaN;

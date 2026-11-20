@@ -17,7 +17,9 @@ export const appConfig: ApplicationConfig = {
     // O de erro fica por fora: só vê a falha depois que o de autenticação tentou renovar a sessão.
     provideHttpClient(withInterceptors([erroInterceptor, authInterceptor])),
     { provide: LOCALE_ID, useValue: 'pt-BR' },
-    // ECharts carregado sob demanda: não pesa no login nem nas telas sem gráfico.
-    provideEchartsCore({ echarts: () => import('echarts') }),
+    // ECharts sob demanda e só com os módulos usados: não pesa no login nem nas telas sem gráfico.
+    provideEchartsCore({
+      echarts: () => import('./shared/graficos/echarts-enxuto').then((m) => m.default),
+    }),
   ],
 };
