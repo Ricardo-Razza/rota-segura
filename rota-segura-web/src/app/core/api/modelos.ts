@@ -176,8 +176,16 @@ export interface StatusVeiculo {
   ultimaLeitura: string | null;
   saida: string | null;
   tempoMedioMin: number | null;
+  /** Só em rota: pelo GPS e pelos trajetos anteriores quando há histórico, senão saída + tempo médio. */
   previsaoChegada: string | null;
+  origemPrevisao: OrigemPrevisao | null;
+  /** Hora em que o ônibus costuma chegar ("HH:mm:ss"); só na previsão pelo GPS. */
+  chegadaNormal: string | null;
+  /** Previsão − normal, em minutos (positivo = mais tarde); só na previsão pelo GPS. */
+  diferencaMin: number | null;
 }
+
+export type OrigemPrevisao = 'GPS' | 'SAIDA';
 
 export interface StatusDosVeiculos {
   avaliadoEm: string;
@@ -580,4 +588,46 @@ export interface LocaisDoDia {
   desatualizado: boolean;
   /** Algum detalhe não pôde ser lido da API externa. */
   incompleto: boolean;
+}
+
+/** Embarque no replay: hora e local do ônibus (nulo sem trajeto naquela hora). Nunca traz o aluno. */
+export interface EmbarqueNoTrajeto {
+  em: string;
+  latitude: number | null;
+  longitude: number | null;
+}
+
+export interface DestinoTrajeto {
+  escolaId: number;
+  latitude: number;
+  longitude: number;
+  raioM: number;
+}
+
+/** Trajeto guardado de um dia, para o replay. */
+export interface TrajetoDoDia {
+  veiculoId: number;
+  data: string;
+  pontos: PontoRastro[];
+  embarques: EmbarqueNoTrajeto[];
+  escola: DestinoTrajeto | null;
+  desatualizado: boolean;
+}
+
+/** Parada real aprendida dos embarques (sem aluno, só contagens). */
+export interface ParadaAprendida {
+  latitude: number;
+  longitude: number;
+  embarques: number;
+  alunos: number;
+  dias: number;
+  /** Mediana do horário de embarque em cada turno ("HH:mm:ss"). */
+  horariosTipicos: string[];
+}
+
+export interface ParadasDoVeiculo {
+  veiculoId: number;
+  diasAnalisados: number;
+  embarquesLocalizados: number;
+  paradas: ParadaAprendida[];
 }

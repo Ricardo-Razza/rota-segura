@@ -15,9 +15,11 @@ import {
   ListaDeAlertas,
   ListaDeAlunos,
   OpcoesDeFiltro,
+  ParadasDoVeiculo,
   Pendencias,
   PerfilAluno,
   PresencaHoje,
+  TrajetoDoDia,
   PresencaPeriodo,
   PreviaRelatorio,
   QuadroDoDia,
@@ -103,6 +105,19 @@ export class PainelApi {
   /** Rastro do dia de um veículo (o backend só guarda o de hoje). */
   rastreamentoDoVeiculo(id: number): Observable<RastreioVeiculo> {
     return this.http.get<RastreioVeiculo>(`${API}/veiculos/${id}/rastreamento`, LEITURA);
+  }
+
+  /** Trajeto guardado de um dia para o replay (auditado; só id e data na URL). */
+  trajeto(id: number, data: string): Observable<TrajetoDoDia> {
+    return this.http.get<TrajetoDoDia>(`${API}/veiculos/${id}/trajeto`, {
+      ...LEITURA,
+      params: new HttpParams().set('data', data),
+    });
+  }
+
+  /** Paradas reais aprendidas dos embarques dos últimos dias letivos (auditado). */
+  paradas(id: number): Observable<ParadasDoVeiculo> {
+    return this.http.get<ParadasDoVeiculo>(`${API}/veiculos/${id}/paradas`, LEITURA);
   }
 
   /** Onde o aluno embarcou e chegou no dia. Só ids e data vão na URL; a consulta é auditada. */

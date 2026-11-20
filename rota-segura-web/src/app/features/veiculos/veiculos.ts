@@ -22,6 +22,7 @@ import { FilterChips, OpcaoChip } from '../../shared/ui/filter-chips';
 import { StatusBadge } from '../../shared/ui/status-badge';
 import { JORNADA } from '../../shared/ui/tom';
 import { MapaVeiculos } from './mapa-veiculos';
+import { ReplayTrajeto } from './replay-trajeto';
 import {
   ESTADO_VEICULO,
   FAIXA,
@@ -31,7 +32,9 @@ import {
   JANELA_POSICOES_MS,
   distancia,
   filtrarVeiculos,
+  horariosDaParada,
   situacaoGps,
+  textoPrevisao,
 } from './veiculos.logica';
 import { Icone } from '../../shared/ui/icone';
 
@@ -43,7 +46,15 @@ const RELOGIO_MS = 5000;
 /** Veículos (status do dia, mapa, detalhe) e saúde dos leitores faciais. Tudo somente leitura. */
 @Component({
   selector: 'rs-veiculos',
-  imports: [Icone, ChartCard, FilterChips, StatusBadge, MapaVeiculos, IndicadorConexao],
+  imports: [
+    Icone,
+    ChartCard,
+    FilterChips,
+    StatusBadge,
+    MapaVeiculos,
+    ReplayTrajeto,
+    IndicadorConexao,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="rs-pagina">
@@ -135,6 +146,12 @@ const RELOGIO_MS = 5000;
                         <span class="rs-nota">Ocupação —</span>
                       }
                     </span>
+                    @if (previsao(v); as p) {
+                      <span class="linha">
+                        <span class="rs-mono">{{ p.chegada }}</span>
+                        <rs-status-badge [texto]="p.comparacao" [tom]="p.tom" />
+                      </span>
+                    }
                     <span class="linha">
                       <rs-status-badge [texto]="gps(v.id).texto" [tom]="gps(v.id).tom" />
                       @if (rastreioDe(v.id)?.naCercaDaEscola) {
@@ -165,8 +182,58 @@ const RELOGIO_MS = 5000;
               [rastreios]="rastreios()"
               [raioCercaM]="rastreio.dados()?.raioCercaM ?? 0"
               [selecionadoId]="selecionadoId()"
+              [paradas]="paradasNoMapa()"
               (selecionar)="selecionar($event)"
             />
+            @if (selecionadoId() !== null) {
+              <div class="paradas">
+                <label>
+                  <input
+                    type="checkbox"
+                    [checked]="mostrarParadas()"
+                    (change)="mostrarParadas.set($any($event.target).checked)"
+                  />
+                  Mostrar paradas aprendidas do veículo selecionado
+                </label>
+                @if (mostrarParadas()) {
+                  @switch (paradas.estado()) {
+                    @case ('carregando') {
+                      <span class="rs-nota">Aprendendo as paradas…</span>
+                    }
+                    @case ('erro') {
+                      <span class="rs-aviso"
+                        >Não foi possível carregar as paradas.
+                        <button
+                          type="button"
+                          class="rs-botao rs-botao--pequeno"
+                          (click)="paradas.recarregar()"
+                        >
+                          Tentar de novo
+                        </button></span
+                      >
+                    }
+                    @default {
+                      @if (paradas.dados(); as p) {
+                        <span class="rs-nota">
+                          @if (p.paradas.length) {
+                            {{ p.paradas.length }} parada(s) em {{ p.diasAnalisados }} dia(s)
+                            letivo(s):
+                            @for (pa of p.paradas; track $index) {
+                              <span class="rs-mono">{{ horarios(pa) }}</span>{{
+                                $last ? '' : ' · '
+                              }}
+                            }
+                          } @else {
+                            Ainda sem paradas: são precisos ao menos 3 embarques no mesmo ponto com
+                            GPS guardado.
+                          }
+                        </span>
+                      }
+                    }
+                  }
+                }
+              </div>
+            }
             @if (rastreio.estado() === 'erro') {
               <p class="rs-aviso">
                 Não foi possível carregar o GPS.
@@ -219,7 +286,14 @@ const RELOGIO_MS = 5000;
                 </div>
                 <div>
                   <dt>Previsão de chegada</dt>
-                  <dd>{{ hora(d.veiculo.previsaoChegada) }}</dd>
+                  @if (previsao(d.veiculo); as p) {
+                    <dd>
+                      {{ p.chegada.replace('Chega às ', '') }}
+                      <rs-status-badge [texto]="p.comparacao" [tom]="p.tom" />
+                    </dd>
+                  } @else {
+                    <dd>—</dd>
+                  }
                 </div>
                 <div>
                   <dt>Capacidade</dt>
@@ -287,6 +361,9 @@ const RELOGIO_MS = 5000;
               </div>
             }
           </rs-chart-card>
+          @if (selecionadoId(); as id) {
+            <rs-replay-trajeto [veiculoId]="id" />
+          }
         }
       } @else {
         <rs-chart-card
@@ -402,6 +479,14 @@ const RELOGIO_MS = 5000;
     .cresce {
       flex: 1;
     }
+    .paradas {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px 12px;
+      margin-top: 8px;
+      font-size: 13px;
+    }
     h3 {
       margin: 12px 0 4px;
       font-size: 13px;
@@ -424,6 +509,8 @@ export class Veiculos {
   protected readonly haQuanto = haQuanto;
   protected readonly rotulo = rotuloVeiculo;
   protected readonly distancia = distancia;
+  protected readonly previsao = textoPrevisao;
+  protected readonly horarios = horariosDaParada;
 
   protected readonly aba = signal<Aba>('veiculos');
   protected readonly termo = signal('');
@@ -448,6 +535,18 @@ export class Veiculos {
     const id = this.selecionadoId();
     return id === null ? null : this.api.veiculo(id);
   });
+
+  /** Camada de paradas aprendidas: só busca quando ligada (a consulta é auditada). */
+  protected readonly mostrarParadas = signal(false);
+  protected readonly paradas = carga(() => {
+    const id = this.selecionadoId();
+    return id === null || !this.mostrarParadas() ? null : this.api.paradas(id);
+  });
+  protected readonly paradasNoMapa = computed(() =>
+    this.mostrarParadas() && this.selecionadoId() !== null
+      ? (this.paradas.dados()?.paradas ?? [])
+      : [],
+  );
 
   /** GPS ao vivo: carga inicial (com o rastro do dia) e depois o evento SSE `veiculo.posicao`. */
   protected readonly rastreio = carga(() => this.api.rastreamento());

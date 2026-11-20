@@ -19,13 +19,16 @@ import br.com.rotasegura.shared.erro.RecursoNaoEncontradoException;
 import br.com.rotasegura.shared.integration.ColecaoPaginada;
 import br.com.rotasegura.shared.integration.Conversoes;
 import br.com.rotasegura.shared.integration.ResultadoCache;
+import br.com.rotasegura.veiculos.application.RastreamentoService.RastreioVeiculo;
 import br.com.rotasegura.veiculos.domain.FaixaOcupacao;
+import br.com.rotasegura.veiculos.domain.PrevisaoPorTrajeto.Previsao;
 import br.com.rotasegura.veiculos.integration.VeiculoDto;
 import br.com.rotasegura.veiculos.integration.VeiculosClient;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumMap;
@@ -33,6 +36,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import org.springframework.stereotype.Service;
 
@@ -58,16 +62,21 @@ public class StatusVeiculosService {
     private final CalendarioLetivo calendario;
     private final EscopoService escopo;
     private final VeiculosProperties propriedades;
+    private final RastreamentoService rastreamento;
+    private final HistoricoDeRotasService historico;
 
     public StatusVeiculosService(VeiculosClient veiculos, JornadaService jornadas, VisaoDoDiaService visao,
                                  CalendarioLetivo calendario, EscopoService escopo,
-                                 VeiculosProperties propriedades) {
+                                 VeiculosProperties propriedades, RastreamentoService rastreamento,
+                                 HistoricoDeRotasService historico) {
         this.veiculos = veiculos;
         this.jornadas = jornadas;
         this.visao = visao;
         this.calendario = calendario;
         this.escopo = escopo;
         this.propriedades = propriedades;
+        this.rastreamento = rastreamento;
+        this.historico = historico;
     }
 
     /** Veículos no escopo do usuário. */
@@ -139,6 +148,7 @@ public class StatusVeiculosService {
             }
         }
 
+        Map<Long, RastreioVeiculo> rastreios = rastreamento.todos();
         List<StatusVeiculo> resultado = new ArrayList<>();
         for (VeiculoDto dto : cadastro.valor().itens()) {
             Long id = Conversoes.paraLong(dto.id());
@@ -146,7 +156,7 @@ public class StatusVeiculosService {
                 continue;
             }
             resultado.add(statusDe(id, dto, linhasHoje, historicoPorVeiculo.getOrDefault(id, List.of()),
-                    leitoresPorVeiculo.getOrDefault(id, List.of()), ultimaPorLeitor));
+                    leitoresPorVeiculo.getOrDefault(id, List.of()), ultimaPorLeitor, rastreios.get(id), agora));
         }
         resultado.sort(Comparator.comparing(StatusVeiculo::placa, Comparator.nullsLast(Comparator.naturalOrder())));
         return new Calculo(agora, resultado, linhasHoje,
@@ -155,7 +165,8 @@ public class StatusVeiculosService {
     }
 
     private StatusVeiculo statusDe(long id, VeiculoDto dto, List<Linha> linhasHoje, List<JornadaDoDia> historico,
-                                   List<DispositivoFacialDto> leitores, Map<Long, LocalDateTime> ultimaPorLeitor) {
+                                   List<DispositivoFacialDto> leitores, Map<Long, LocalDateTime> ultimaPorLeitor,
+                                   RastreioVeiculo rastreio, LocalDateTime agora) {
         List<JornadaDoDia> hoje = linhasHoje.stream().map(Linha::jornada)
                 .filter(j -> j.embarqueEm() != null && Long.valueOf(id).equals(j.veiculoId()))
                 .toList();
@@ -184,6 +195,17 @@ public class StatusVeiculosService {
                 .filter(t -> t != null).sorted().toList());
         LocalDateTime previsao = saida != null && tempoMedio != null && estado == EstadoVeiculo.EM_ROTA
                 ? saida.plusMinutes(tempoMedio) : null;
+        OrigemPrevisao origem = previsao == null ? null : OrigemPrevisao.SAIDA;
+        LocalTime chegadaNormal = null;
+        Long diferencaMin = null;
+        Optional<Previsao> pelaPosicao = estado == EstadoVeiculo.EM_ROTA ? previsaoPelaPosicao(id, rastreio, agora)
+                : Optional.empty();
+        if (pelaPosicao.isPresent()) {
+            previsao = pelaPosicao.get().chegada();
+            origem = OrigemPrevisao.GPS;
+            chegadaNormal = pelaPosicao.get().chegadaNormal();
+            diferencaMin = pelaPosicao.get().diferencaMin();
+        }
 
         Long escolaId = null;
         Double latitude = null;
@@ -211,7 +233,21 @@ public class StatusVeiculosService {
                         .findFirst().orElse(null);
         return new StatusVeiculo(id, dto.placa(), prefixo, juntar(dto.marca(), dto.modelo()), estado, embarcados,
                 aBordo, chegaram, esperados.size(), capacidade, ocupacao, faixa, escolaId, latitude, longitude,
-                List.copyOf(idsLeitores), ultimaLeitura, saida, tempoMedio, previsao);
+                List.copyOf(idsLeitores), ultimaLeitura, saida, tempoMedio, previsao, origem, chegadaNormal,
+                diferencaMin);
+    }
+
+    /** Previsão pelo GPS ao vivo e pelos trajetos anteriores; vazia sem posição recente ou sem histórico. */
+    private Optional<Previsao> previsaoPelaPosicao(long id, RastreioVeiculo rastreio, LocalDateTime agora) {
+        if (rastreio == null || rastreio.atrasada() || rastreio.posicao() == null) {
+            return Optional.empty();
+        }
+        try {
+            return historico.previsao(id, rastreio.posicao(), agora);
+        } catch (RuntimeException e) {
+            // Sem histórico (ex.: banco indisponível) o painel fica com a estimativa pela saída.
+            return Optional.empty();
+        }
     }
 
     static Long mediana(List<Long> ordenados) {
@@ -252,13 +288,26 @@ public class StatusVeiculosService {
      * @param ocupacao       embarcados do dia / capacidade, em %; nula sem capacidade
      * @param latitude       coordenada da escola ligada aos leitores do veículo (não é GPS do veículo)
      * @param tempoMedioMin  mediana do tempo de trajeto no histórico
-     * @param previsaoChegada saída de hoje + tempo médio, só com o veículo em rota
+     * @param previsaoChegada só com o veículo em rota: pelo GPS e pelos trajetos anteriores quando há histórico,
+     *                        senão saída de hoje + tempo médio
+     * @param origemPrevisao  de onde veio a previsão; nula sem previsão
+     * @param chegadaNormal   hora em que o ônibus costuma chegar (só na previsão pelo GPS)
+     * @param diferencaMin    previsão − chegada normal, em minutos; positivo = mais tarde (só na previsão pelo GPS)
      */
     public record StatusVeiculo(long id, String placa, String prefixo, String descricao, EstadoVeiculo estado,
                                 long embarcados, long aBordo, long chegaram, long esperados, Integer capacidade,
                                 BigDecimal ocupacao, FaixaOcupacao faixaOcupacao, Long escolaId, Double latitude,
                                 Double longitude, List<Long> leitores, LocalDateTime ultimaLeitura,
-                                LocalDateTime saida, Long tempoMedioMin, LocalDateTime previsaoChegada) {
+                                LocalDateTime saida, Long tempoMedioMin, LocalDateTime previsaoChegada,
+                                OrigemPrevisao origemPrevisao, LocalTime chegadaNormal, Long diferencaMin) {
+    }
+
+    /** De onde veio a previsão de chegada. */
+    public enum OrigemPrevisao {
+        /** Posição ao vivo comparada com os trajetos dos dias anteriores. */
+        GPS,
+        /** Hora da saída de hoje + tempo médio de trajeto (sem GPS recente ou sem histórico suficiente). */
+        SAIDA
     }
 
     /**

@@ -92,6 +92,28 @@ rota-segura:
     retencao: ${ROTA_RASTREAMENTO_RETENCAO:90d}
     # Rastreadores consultados ao mesmo tempo: um lento ou fora do ar não atrasa os outros.
     consultas-simultaneas: 8
+  rotas:
+    # Aprendido do trajeto guardado: caminho habitual, paradas reais e previsão de chegada.
+    dias-corredor: ${ROTA_ROTAS_DIAS_CORREDOR:10}
+    dias-paradas: ${ROTA_ROTAS_DIAS_PARADAS:30}
+    # Embarques a até essa distância formam uma parada; com menos embarques que o mínimo, não é parada.
+    raio-parada-m: 50
+    minimo-embarques-parada: 3
+    # Dias com trajeto necessários para prever pela posição e para alertar desvio.
+    minimo-dias: 3
+    # Previsão: passagem de um dia anterior a até essa distância e com essa folga de horário.
+    raio-busca-previsao-m: 300
+    folga-horario-previsao: 90m
+    # Desvio de rota: mais longe que isso do caminho habitual, por mais que esse tempo.
+    distancia-desvio-m: ${ROTA_ROTAS_DISTANCIA_DESVIO_M:300}
+    tempo-desvio: ${ROTA_ROTAS_TEMPO_DESVIO:2m}
+    # Parada fora do padrão: parado (movendo menos que raio-parado-m) por mais que tempo-parado,
+    # a mais de distancia-parada-conhecida-m de toda parada aprendida e da escola.
+    tempo-parado: ${ROTA_ROTAS_TEMPO_PARADO:5m}
+    raio-parado-m: 30
+    distancia-parada-conhecida-m: ${ROTA_ROTAS_DISTANCIA_PARADA_M:150}
+    # Histórico calculado de cada veículo é reaproveitado por esse tempo.
+    cache: 10m
   alertas:
     avaliacao-habilitada: ${ROTA_ALERTAS_HABILITADOS:true}
     intervalo: 30s

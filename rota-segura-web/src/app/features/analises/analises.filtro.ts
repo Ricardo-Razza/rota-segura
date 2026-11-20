@@ -207,6 +207,8 @@ export const TIPOS_ALERTA: Record<string, string> = {
   LEITOR_SEM_LEITURA: 'Leitor sem leitura',
   LEITOR_TIPO_DESCONHECIDO: 'Leitor sem tipo',
   CERCA_VIRTUAL_SEM_DESEMBARQUE: 'Ônibus na escola sem desembarque',
+  DESVIO_DE_ROTA: 'Desvio de rota',
+  PARADA_FORA_DO_PADRAO: 'Parada fora do padrão',
 };
 
 export function rotuloTipoAlerta(tipo: string): string {

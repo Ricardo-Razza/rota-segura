@@ -318,6 +318,9 @@ const VEICULO = {
   saida: `${DIA}T07:05:00`,
   tempoMedioMin: 25,
   previsaoChegada: `${DIA}T07:30:00`,
+  origemPrevisao: 'GPS',
+  chegadaNormal: '07:20:00',
+  diferencaMin: 10,
 };
 
 function alertaInicial() {
@@ -531,6 +534,80 @@ export async function simularApi(page: Page): Promise<ApiSimulada> {
         })),
         desatualizado: false,
         incompleto: false,
+      });
+    }
+    if (caminho === '/veiculos/rastreamento') {
+      return json({
+        avaliadoEm: `${DIA}T07:20:00`,
+        intervaloS: 5,
+        raioCercaM: 300,
+        veiculos: [
+          {
+            veiculoId: VEICULO.id,
+            escolaId: 1,
+            posicao: {
+              latitude: -15.7852,
+              longitude: -47.9221,
+              velocidadeKmh: 28,
+              rumo: 120,
+              emMovimento: true,
+              registradaEm: `${DIA}T07:20:00`,
+            },
+            atrasada: false,
+            falhando: false,
+            distanciaEscolaM: 1200,
+            naCercaDaEscola: false,
+            naCercaDesde: null,
+            rastro: [
+              { latitude: -15.7801, longitude: -47.9292, em: `${DIA}T07:05:00` },
+              { latitude: -15.7852, longitude: -47.9221, em: `${DIA}T07:15:00` },
+            ],
+          },
+        ],
+      });
+    }
+    if (caminho === `/veiculos/${VEICULO.id}`) {
+      return json({
+        veiculo: VEICULO,
+        embarcados: [],
+        ultimasLeituras: [],
+        desatualizado: false,
+        incompleto: false,
+      });
+    }
+    const trajeto = caminho.match(/^\/veiculos\/(\d+)\/trajeto$/);
+    if (trajeto) {
+      const em = (h: string) => `${DIA}T${h}`;
+      return json({
+        veiculoId: Number(trajeto[1]),
+        data: DIA,
+        pontos: [
+          { latitude: -15.7801, longitude: -47.9292, em: em('07:05:00') },
+          { latitude: -15.7852, longitude: -47.9221, em: em('07:15:00') },
+          { latitude: -15.7905, longitude: -47.9163, em: em('07:25:00') },
+        ],
+        embarques: [
+          { em: em('07:05:00'), latitude: -15.7801, longitude: -47.9292 },
+          { em: em('07:15:00'), latitude: -15.7852, longitude: -47.9221 },
+        ],
+        escola: { escolaId: 1, latitude: -15.7925, longitude: -47.914, raioM: 300 },
+        desatualizado: false,
+      });
+    }
+    if (/^\/veiculos\/\d+\/paradas$/.test(caminho)) {
+      const parada = (latitude: number, longitude: number, h: string) => ({
+        latitude,
+        longitude,
+        embarques: 9,
+        alunos: 1,
+        dias: 9,
+        horariosTipicos: [h],
+      });
+      return json({
+        veiculoId: Number(caminho.split('/')[2]),
+        diasAnalisados: 9,
+        embarquesLocalizados: 18,
+        paradas: [parada(-15.7801, -47.9292, '07:05:00'), parada(-15.7852, -47.9221, '07:15:00')],
       });
     }
     const rastreio = caminho.match(/^\/veiculos\/(\d+)\/rastreamento$/);

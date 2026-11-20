@@ -1,4 +1,9 @@
-import { RastreioVeiculo, SaudeLeitor, StatusVeiculo } from '../../core/api/modelos';
+import {
+  ParadaAprendida,
+  RastreioVeiculo,
+  SaudeLeitor,
+  StatusVeiculo,
+} from '../../core/api/modelos';
 import { resultadosLocais } from '../../layout/busca-global';
 import {
   agruparLeitores,
@@ -6,8 +11,13 @@ import {
   aplicarPosicoes,
   distancia,
   filtrarVeiculos,
+  hojeIso,
+  horariosDaParada,
   idadePosicao,
+  posicaoNoInstante,
+  rotuloParada,
   situacaoGps,
+  textoPrevisao,
 } from './veiculos.logica';
 
 function veiculo(id: number, placa: string, estado: StatusVeiculo['estado']): StatusVeiculo {
@@ -32,6 +42,9 @@ function veiculo(id: number, placa: string, estado: StatusVeiculo['estado']): St
     saida: null,
     tempoMedioMin: null,
     previsaoChegada: null,
+    origemPrevisao: null,
+    chegadaNormal: null,
+    diferencaMin: null,
   };
 }
 
@@ -182,6 +195,89 @@ describe('veículos', () => {
       expect(distancia(850)).toBe('850 m');
       expect(distancia(2400)).toBe('2,4 km');
       expect(distancia(null)).toBe('—');
+    });
+  });
+
+  describe('previsão de chegada', () => {
+    const emRota = (extra: Partial<StatusVeiculo>): StatusVeiculo => ({
+      ...veiculo(8, 'BBB0B08', 'EM_ROTA'),
+      previsaoChegada: '2026-03-10T07:23:00',
+      ...extra,
+    });
+
+    it('pelo GPS diz quanto passa do horário de sempre', () => {
+      expect(textoPrevisao(emRota({ origemPrevisao: 'GPS', diferencaMin: 15 }))).toEqual({
+        chegada: 'Chega às 07:23',
+        comparacao: '15 min depois do normal',
+        tom: 'critico',
+      });
+      expect(textoPrevisao(emRota({ origemPrevisao: 'GPS', diferencaMin: 5 }))?.tom).toBe(
+        'atencao',
+      );
+      expect(textoPrevisao(emRota({ origemPrevisao: 'GPS', diferencaMin: -6 }))?.comparacao).toBe(
+        '6 min antes do normal',
+      );
+      expect(textoPrevisao(emRota({ origemPrevisao: 'GPS', diferencaMin: 2 }))?.comparacao).toBe(
+        'no horário de sempre',
+      );
+    });
+
+    it('sem GPS avisa que é estimativa pela saída e sem previsão não mostra nada', () => {
+      expect(textoPrevisao(emRota({ origemPrevisao: 'SAIDA' }))?.comparacao).toBe(
+        'estimativa pela hora da saída',
+      );
+      expect(textoPrevisao(veiculo(1, 'AAA0A01', 'CONCLUIDO'))).toBeNull();
+    });
+  });
+
+  describe('paradas aprendidas', () => {
+    const parada: ParadaAprendida = {
+      latitude: -10.01,
+      longitude: -50,
+      embarques: 9,
+      alunos: 2,
+      dias: 5,
+      horariosTipicos: ['06:51:00', '17:32:30'],
+    };
+
+    it('mostra horários típicos e só contagens, sem aluno', () => {
+      expect(horariosDaParada(parada)).toBe('06:51 e 17:32');
+      expect(rotuloParada(parada)).toBe(
+        'Parada · 06:51 e 17:32 · 9 embarques (2 alunos) em 5 dia(s)',
+      );
+      expect(rotuloParada({ ...parada, alunos: 1 })).toContain('(1 aluno)');
+    });
+  });
+
+  describe('replay do trajeto', () => {
+    const pontos = [
+      { latitude: -10.02, longitude: -50, em: '2026-03-09T06:50:00' },
+      { latitude: -10.01, longitude: -50, em: '2026-03-09T07:00:00' },
+      { latitude: -10.0, longitude: -50.01, em: '2026-03-09T07:10:00' },
+    ];
+    const ms = (h: string) => new Date(`2026-03-09T${h}`).getTime();
+
+    it('interpola entre os pontos vizinhos', () => {
+      const meio = posicaoNoInstante(pontos, ms('06:55:00'))!;
+      expect(meio.latitude).toBeCloseTo(-10.015, 6);
+      expect(meio.indice).toBe(0);
+      const depois = posicaoNoInstante(pontos, ms('07:05:00'))!;
+      expect(depois.longitude).toBeCloseTo(-50.005, 6);
+      expect(depois.indice).toBe(1);
+    });
+
+    it('antes do início fica no primeiro ponto e depois do fim no último', () => {
+      expect(posicaoNoInstante(pontos, ms('06:00:00'))).toEqual({
+        latitude: -10.02,
+        longitude: -50,
+        indice: 0,
+      });
+      expect(posicaoNoInstante(pontos, ms('09:00:00'))?.indice).toBe(2);
+      expect(posicaoNoInstante([], ms('07:00:00'))).toBeNull();
+    });
+
+    it('data de hoje no formato do campo de data', () => {
+      expect(hojeIso(new Date(2026, 2, 10, 23, 30))).toBe('2026-03-10');
     });
   });
 });

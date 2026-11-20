@@ -15,5 +15,9 @@ public enum TipoAlerta {
     /** Leitor com tipo de uso sem mapeamento: as leituras dele são ignoradas (alerta de configuração). */
     LEITOR_TIPO_DESCONHECIDO,
     /** Veículo dentro da cerca virtual da escola há mais que o tempo de desembarque, com aluno a bordo. */
-    CERCA_VIRTUAL_SEM_DESEMBARQUE
+    CERCA_VIRTUAL_SEM_DESEMBARQUE,
+    /** Veículo com aluno a bordo longe do caminho habitual (trajetos dos últimos dias letivos). */
+    DESVIO_DE_ROTA,
+    /** Veículo com aluno a bordo parado por muito tempo longe das paradas conhecidas e da escola. */
+    PARADA_FORA_DO_PADRAO
 }

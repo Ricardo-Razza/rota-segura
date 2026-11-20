@@ -10,11 +10,11 @@ import {
   viewChild,
 } from '@angular/core';
 import type * as L from 'leaflet';
-import { RastreioVeiculo, StatusVeiculo } from '../../core/api/modelos';
+import { ParadaAprendida, RastreioVeiculo, StatusVeiculo } from '../../core/api/modelos';
 import { Tom } from '../../shared/ui/tom';
 import { rotuloVeiculo } from '../../shared/formato';
 import { CONFIG_MAPA } from './mapa.config';
-import { situacaoGps } from './veiculos.logica';
+import { rotuloParada, situacaoGps } from './veiculos.logica';
 
 const COR_ESTADO: Record<string, string> = {
   EM_ROTA: '--info',
@@ -82,6 +82,9 @@ function remover<K>(camadas: Map<K, L.Layer>, vistas: Set<K>, grupo: L.LayerGrou
         @if (escolas().length) {
           <li><span class="quadrado"></span>Escola (cor da presença)</li>
         }
+        @if (paradas().length) {
+          <li><span class="ponto ponto--parada"></span>Parada aprendida</li>
+        }
       </ul>
     }
   `,
@@ -124,6 +127,10 @@ function remover<K>(camadas: Map<K, L.Layer>, vistas: Set<K>, grupo: L.LayerGrou
     .ponto--cerca {
       border: 2px dashed var(--marca-secundaria);
     }
+    .ponto--parada {
+      border: 2px solid var(--acento);
+      background: color-mix(in srgb, var(--acento) 35%, transparent);
+    }
     .traco {
       display: inline-block;
       width: 16px;
@@ -146,6 +153,8 @@ export class MapaVeiculos implements OnDestroy {
   readonly selecionarEscola = output<number>();
   readonly altura = input('420px');
   readonly legenda = input(true);
+  /** Paradas reais aprendidas do veículo selecionado (camada opcional). */
+  readonly paradas = input<ParadaAprendida[]>([]);
 
   private readonly elemento = viewChild.required<ElementRef<HTMLDivElement>>('mapa');
   private leaflet: typeof L | null = null;
@@ -153,17 +162,23 @@ export class MapaVeiculos implements OnDestroy {
   private camada: L.LayerGroup | null = null;
   private enquadrado = '';
   private observador: ResizeObserver | null = null;
+  /** Saiu da tela: o import do Leaflet pode terminar depois, e o mapa não deve nascer nem se mexer. */
+  private destruido = false;
 
   // Camadas guardadas por chave: a cada posição nova o marcador só anda, sem recriar o mapa inteiro.
   private readonly cercas = new Map<string, L.Circle>();
   private readonly rastros = new Map<number, L.Polyline>();
   private readonly marcadores = new Map<number, L.CircleMarker>();
   private readonly marcadoresEscola = new Map<number, { marcador: L.Marker; icone: string }>();
+  private readonly marcadoresParada = new Map<string, L.CircleMarker>();
 
   constructor() {
     afterNextRender(async () => {
       // Leaflet é CommonJS: no build de produção a API vem em `default`; no servidor de dev, no próprio módulo.
       const modulo = (await import('leaflet')) as typeof L & { default?: typeof L };
+      if (this.destruido) {
+        return;
+      }
       this.leaflet = modulo.default ?? modulo;
       const Lf = this.leaflet;
       // Canvas em vez de SVG: círculos e rastros num único desenho, bem mais leve com muitos veículos.
@@ -191,7 +206,11 @@ export class MapaVeiculos implements OnDestroy {
 
   ngOnDestroy(): void {
     this.observador?.disconnect();
+    // Para a animação de zoom antes de remover: senão o fim dela mexe num mapa que já não existe.
+    this.destruido = true;
+    this.mapa?.stop();
     this.mapa?.remove();
+    this.mapa = null;
   }
 
   private desenhar(): void {
@@ -202,6 +221,7 @@ export class MapaVeiculos implements OnDestroy {
     const selecionado = this.selecionadoId();
     const pontosEscola = this.escolas();
     const escolaAtiva = this.escolaSelecionadaId();
+    const paradas = this.paradas();
     const Lf = this.leaflet;
     if (!Lf || !this.mapa || !this.camada) {
       return;
@@ -342,6 +362,33 @@ export class MapaVeiculos implements OnDestroy {
       enquadrar.push([e.latitude, e.longitude]);
     }
 
+    const paradasVistas = new Set<string>();
+    for (const p of paradas) {
+      const chave = `${p.latitude},${p.longitude}`;
+      paradasVistas.add(chave);
+      const dica = rotuloParada(p);
+      const existente = this.marcadoresParada.get(chave);
+      if (existente) {
+        existente.setTooltipContent(dica);
+      } else {
+        const amarelo = corDe('--acento');
+        this.marcadoresParada.set(
+          chave,
+          Lf.circleMarker([p.latitude, p.longitude], {
+            radius: 6,
+            color: amarelo,
+            weight: 2,
+            fillColor: amarelo,
+            fillOpacity: 0.35,
+          })
+            .bindTooltip(dica)
+            .addTo(camada),
+        );
+        rastroNovo = true;
+      }
+    }
+    remover(this.marcadoresParada, paradasVistas, camada);
+
     if (rastroNovo) {
       // Rastro recém-criado fica por cima: os veículos voltam para a frente.
       this.marcadores.forEach((m) => m.bringToFront());
@@ -356,7 +403,8 @@ export class MapaVeiculos implements OnDestroy {
       }
     }
 
-    // Reenquadra só quando muda quem está no mapa ou quem está selecionado.
+    // Reenquadra só quando muda quem está no mapa ou quem está selecionado. Sem animação: o Leaflet não
+    // cancela o fim da animação de zoom ao remover o mapa, e sair da tela no meio dela gera erro.
     const assinatura =
       veiculos.map((v) => `${v.id}:${rastreios.get(v.id)?.posicao ? 1 : 0}`).join() +
       `|${selecionado}|${pontosEscola.map((e) => e.id).join()}|${escolaAtiva}`;
@@ -367,15 +415,23 @@ export class MapaVeiculos implements OnDestroy {
     const foco = selecionado === null ? undefined : rastreios.get(selecionado);
     const escolaFoco = pontosEscola.find((e) => e.id === escolaAtiva);
     if (escolaFoco) {
-      this.mapa.setView([escolaFoco.latitude, escolaFoco.longitude], 15);
+      this.mapa.setView([escolaFoco.latitude, escolaFoco.longitude], 15, { animate: false });
     } else if (foco?.posicao) {
       const pontos: L.LatLngExpression[] = [
         [foco.posicao.latitude, foco.posicao.longitude],
         ...foco.rastro.map((p) => [p.latitude, p.longitude] as L.LatLngExpression),
       ];
-      this.mapa.fitBounds(Lf.latLngBounds(pontos), { padding: [40, 40], maxZoom: 16 });
+      this.mapa.fitBounds(Lf.latLngBounds(pontos), {
+        padding: [40, 40],
+        maxZoom: 16,
+        animate: false,
+      });
     } else {
-      this.mapa.fitBounds(Lf.latLngBounds(enquadrar), { padding: [30, 30], maxZoom: 15 });
+      this.mapa.fitBounds(Lf.latLngBounds(enquadrar), {
+        padding: [30, 30],
+        maxZoom: 15,
+        animate: false,
+      });
     }
   }
 }

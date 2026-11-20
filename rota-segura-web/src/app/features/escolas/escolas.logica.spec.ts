@@ -45,6 +45,9 @@ function veiculo(id: number, escolaId: number | null, lat: number | null): Statu
     saida: null,
     tempoMedioMin: null,
     previsaoChegada: null,
+    origemPrevisao: null,
+    chegadaNormal: null,
+    diferencaMin: null,
   } as StatusVeiculo;
 }
 
