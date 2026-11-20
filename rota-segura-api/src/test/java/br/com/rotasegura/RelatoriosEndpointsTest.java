@@ -113,6 +113,9 @@ class RelatoriosEndpointsTest {
                 .andExpect(status().isOk())
                 .andExpect(header().string("Content-Disposition",
                         "attachment; filename=\"frequencia_2026-03-09_2026-03-10.csv\""))
+                // Cabeçalhos de segurança gravados uma vez, na thread da requisição (sem corrida com o streaming).
+                .andExpect(header().stringValues("Cache-Control", "no-cache, no-store, max-age=0, must-revalidate"))
+                .andExpect(header().exists("Content-Security-Policy"))
                 .andReturn();
         byte[] corpo = resultado.getResponse().getContentAsByteArray();
         assertThat(corpo[0]).isEqualTo((byte) 0xEF);

@@ -61,7 +61,6 @@ public class AuthController {
     private ResponseEntity<TokenResponse> responder(Sessao sessao) {
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, cookie(sessao.refreshToken(), props.refreshTtl()).toString())
-                .header(HttpHeaders.CACHE_CONTROL, "no-store")
                 .body(new TokenResponse(sessao.accessToken(), sessao.expiraEmSegundos(),
                         UsuarioResponse.de(sessao.usuario())));
     }

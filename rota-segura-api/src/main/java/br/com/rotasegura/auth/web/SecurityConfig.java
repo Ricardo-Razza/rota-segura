@@ -11,6 +11,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.config.ObjectPostProcessor;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -25,6 +26,7 @@ import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.header.HeaderWriterFilter;
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -70,7 +72,17 @@ public class SecurityConfig {
                         .referrerPolicy(referrer -> referrer.policy(ReferrerPolicy.NO_REFERRER))
                         .frameOptions(frame -> frame.deny())
                         .permissionsPolicyHeader(permissoes -> permissoes.policy(
-                                "geolocation=(), camera=(), microphone=()")));
+                                "geolocation=(), camera=(), microphone=()"))
+                        // Cabeçalhos gravados já na entrada, na thread da requisição. Sem isso, nas exportações em
+                        // streaming o primeiro flush (outra thread) e o fim da cadeia de filtros gravam os mesmos
+                        // cabeçalhos ao mesmo tempo na resposta, que não é thread-safe.
+                        .withObjectPostProcessor(new ObjectPostProcessor<HeaderWriterFilter>() {
+                            @Override
+                            public <O extends HeaderWriterFilter> O postProcess(O filtro) {
+                                filtro.setShouldWriteHeadersEagerly(true);
+                                return filtro;
+                            }
+                        }));
         return http.build();
     }
 

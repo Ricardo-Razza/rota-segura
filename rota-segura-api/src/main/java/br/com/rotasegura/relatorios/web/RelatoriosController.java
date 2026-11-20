@@ -93,7 +93,6 @@ public class RelatoriosController {
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION,
                         ContentDisposition.attachment().filename(exportacao.nomeArquivo()).build().toString())
-                .header(HttpHeaders.CACHE_CONTROL, "no-store")
                 .contentType(MediaType.parseMediaType(formato.contentType))
                 .body(corpo);
     }

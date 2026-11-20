@@ -92,7 +92,8 @@ class SegurancaIntegracaoTest {
                 .andExpect(jsonPath("$.accessToken").isNotEmpty())
                 .andExpect(jsonPath("$.expiraEmSegundos").value(900))
                 .andExpect(jsonPath("$.usuario.perfil").value("ADMIN"))
-                .andExpect(header().string("Cache-Control", "no-store"))
+                // Um único Cache-Control (o do Spring Security, gravado na entrada) e sem cache do token.
+                .andExpect(header().stringValues("Cache-Control", "no-cache, no-store, max-age=0, must-revalidate"))
                 .andReturn();
 
         String setCookie = resultado.getResponse().getHeader("Set-Cookie");
