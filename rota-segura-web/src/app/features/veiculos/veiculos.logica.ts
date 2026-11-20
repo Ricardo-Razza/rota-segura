@@ -268,3 +268,33 @@ export function hojeIso(agora = new Date()): string {
   const d = new Date(agora.getTime() - agora.getTimezoneOffset() * 60_000);
   return d.toISOString().slice(0, 10);
 }
+
+/**
+ * Sem ponto novo por mais que isso, o ônibus estava parado (o rastro só ganha ponto quando ele anda) ou sem
+ * sinal: o replay pula direto para quando ele voltou a andar.
+ */
+export const PAUSA_MAXIMA_REPLAY_MS = 60_000;
+
+/**
+ * Próximo instante do replay: avança `avancoMs` e, se cair num intervalo parado (garagem de madrugada,
+ * entre a rota da manhã e a da tarde), pula para o ponto seguinte. Nunca passa do último ponto.
+ */
+export function avancarReplay(tempos: number[], atual: number, avancoMs: number): number {
+  if (tempos.length === 0) {
+    return atual;
+  }
+  const fim = tempos[tempos.length - 1];
+  const proximo = Math.min(fim, atual + avancoMs);
+  // Último ponto até o próximo instante.
+  let i = -1;
+  for (let j = 0; j < tempos.length && tempos[j] <= proximo; j++) {
+    i = j;
+  }
+  if (i < 0) {
+    return tempos[0];
+  }
+  if (i + 1 < tempos.length && tempos[i + 1] - tempos[i] > PAUSA_MAXIMA_REPLAY_MS) {
+    return tempos[i + 1];
+  }
+  return proximo;
+}

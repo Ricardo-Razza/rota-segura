@@ -19,7 +19,13 @@ import { hora } from '../../shared/formato';
 import { ChartCard } from '../../shared/ui/chart-card';
 import { Icone } from '../../shared/ui/icone';
 import { CONFIG_MAPA } from './mapa.config';
-import { VELOCIDADES_REPLAY, hojeIso, instante, posicaoNoInstante } from './veiculos.logica';
+import {
+  VELOCIDADES_REPLAY,
+  avancarReplay,
+  hojeIso,
+  instante,
+  posicaoNoInstante,
+} from './veiculos.logica';
 
 /** "07:03" de um instante em ms (horário local, o da operação). */
 function horaDe(ms: number): string {
@@ -312,8 +318,8 @@ export class ReplayTrajeto implements OnDestroy {
     }
     const decorrido = agora - this.ultimoQuadro;
     this.ultimoQuadro = agora;
-    // Velocidade = minutos de trajeto por segundo de animação.
-    const proximo = Math.min(this.fim(), this.cursor() + decorrido * this.velocidade() * 60);
+    // Velocidade = minutos de trajeto por segundo de animação; tempo parado é pulado.
+    const proximo = avancarReplay(this.tempos(), this.cursor(), decorrido * this.velocidade() * 60);
     this.cursor.set(proximo);
     if (proximo >= this.fim()) {
       this.tocando.set(false);

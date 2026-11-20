@@ -9,6 +9,7 @@ import {
   agruparLeitores,
   aplicarPosicao,
   aplicarPosicoes,
+  avancarReplay,
   distancia,
   filtrarVeiculos,
   hojeIso,
@@ -274,6 +275,19 @@ describe('veículos', () => {
       });
       expect(posicaoNoInstante(pontos, ms('09:00:00'))?.indice).toBe(2);
       expect(posicaoNoInstante([], ms('07:00:00'))).toBeNull();
+    });
+
+    it('pula o tempo parado: garagem de madrugada e intervalo entre as rotas', () => {
+      const t = [ms('02:10:00'), ms('07:00:00'), ms('07:00:30'), ms('07:01:00'), ms('17:00:00')];
+      // Na garagem: vai direto para a saída das 07:00.
+      expect(avancarReplay(t, t[0], 1000)).toBe(t[1]);
+      // Andando: avança normalmente.
+      expect(avancarReplay(t, t[1], 10_000)).toBe(t[1] + 10_000);
+      // Fim da rota da manhã: pula para a da tarde.
+      expect(avancarReplay(t, t[3], 1000)).toBe(t[4]);
+      // Nunca passa do último ponto.
+      expect(avancarReplay(t, t[4], 60_000)).toBe(t[4]);
+      expect(avancarReplay([], 5, 1000)).toBe(5);
     });
 
     it('data de hoje no formato do campo de data', () => {
