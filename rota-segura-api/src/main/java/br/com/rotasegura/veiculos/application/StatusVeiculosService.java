@@ -47,7 +47,8 @@ import org.springframework.stereotype.Service;
  * <ul>
  *   <li>O cadastro do aluno não informa o veículo: "esperados" é estimado pelos alunos que embarcaram no
  *       veículo nos últimos dias letivos ({@code rota-segura.veiculos.dias-historico}).</li>
- *   <li>A API não informa capacidade: sem {@code rota-segura.veiculos.capacidade}, ocupação e faixa ficam nulas.</li>
+ *   <li>A capacidade vem de {@code GET /api/veiculos/{id}/dados} (lida junto com o GPS). Sem ela, a capacidade
+ *       fica 0, a ocupação 0% e não há faixa nem alerta de lotação.</li>
  *   <li>{@code latitude}/{@code longitude} são da escola ligada aos leitores do veículo; o GPS ao vivo do
  *       ônibus fica no {@link RastreamentoService}.
  *       A coordenada das leituras não é usada (indicaria o ponto de embarque de uma criança).</li>
@@ -182,10 +183,12 @@ public class StatusVeiculosService {
         historico.forEach(j -> esperados.add(j.alunoId()));
         hoje.forEach(j -> esperados.add(j.alunoId()));
 
-        Integer capacidade = propriedades.capacidade().get(id);
-        BigDecimal ocupacao = capacidade == null || capacidade <= 0 ? null
+        int capacidade = rastreamento.capacidade(id);
+        BigDecimal ocupacao = capacidade <= 0 ? BigDecimal.ZERO
                 : BigDecimal.valueOf(embarcados * 100L).divide(BigDecimal.valueOf(capacidade), 1, RoundingMode.HALF_UP);
-        FaixaOcupacao faixa = FaixaOcupacao.de(ocupacao, propriedades.limiteAtencao(), propriedades.limiteCritico());
+        // Sem capacidade a ocupação fica zerada, mas não vira "OK": não há como classificar a lotação.
+        FaixaOcupacao faixa = capacidade <= 0 ? null
+                : FaixaOcupacao.de(ocupacao, propriedades.limiteAtencao(), propriedades.limiteCritico());
 
         EstadoVeiculo estado = aBordo > 0 ? EstadoVeiculo.EM_ROTA
                 : embarcados > 0 ? EstadoVeiculo.CONCLUIDO : EstadoVeiculo.SEM_EMBARQUE;
@@ -269,8 +272,8 @@ public class StatusVeiculosService {
         for (EstadoVeiculo e : EstadoVeiculo.values()) {
             porEstado.put(e, lista.stream().filter(v -> v.estado() == e).count());
         }
-        return new StatusDosVeiculos(calculo.avaliadoEm(), porEstado, lista, propriedades.capacidade().isEmpty(),
-                calculo.desatualizado(), calculo.incompleto());
+        return new StatusDosVeiculos(calculo.avaliadoEm(), porEstado, lista, calculo.desatualizado(),
+                calculo.incompleto());
     }
 
     public enum EstadoVeiculo {
@@ -284,8 +287,9 @@ public class StatusVeiculosService {
 
     /**
      * @param esperados      estimado: alunos que embarcaram neste veículo hoje ou nos últimos dias letivos
-     * @param capacidade     nula quando não configurada
-     * @param ocupacao       embarcados do dia / capacidade, em %; nula sem capacidade
+     * @param capacidade     lugares informados pela API; 0 quando não informada
+     * @param ocupacao       embarcados do dia / capacidade, em %; 0 sem capacidade
+     * @param faixaOcupacao  nula sem capacidade (não gera alerta de lotação)
      * @param latitude       coordenada da escola ligada aos leitores do veículo (não é GPS do veículo)
      * @param tempoMedioMin  mediana do tempo de trajeto no histórico
      * @param previsaoChegada só com o veículo em rota: pelo GPS e pelos trajetos anteriores quando há histórico,
@@ -295,7 +299,7 @@ public class StatusVeiculosService {
      * @param diferencaMin    previsão − chegada normal, em minutos; positivo = mais tarde (só na previsão pelo GPS)
      */
     public record StatusVeiculo(long id, String placa, String prefixo, String descricao, EstadoVeiculo estado,
-                                long embarcados, long aBordo, long chegaram, long esperados, Integer capacidade,
+                                long embarcados, long aBordo, long chegaram, long esperados, int capacidade,
                                 BigDecimal ocupacao, FaixaOcupacao faixaOcupacao, Long escolaId, Double latitude,
                                 Double longitude, List<Long> leitores, LocalDateTime ultimaLeitura,
                                 LocalDateTime saida, Long tempoMedioMin, LocalDateTime previsaoChegada,
@@ -310,12 +314,8 @@ public class StatusVeiculosService {
         SAIDA
     }
 
-    /**
-     * @param capacidadeNaoConfigurada nenhum veículo tem capacidade cadastrada: o painel avisa em vez de mostrar 0%
-     */
     public record StatusDosVeiculos(LocalDateTime avaliadoEm, Map<EstadoVeiculo, Long> porEstado,
-                                    List<StatusVeiculo> veiculos, boolean capacidadeNaoConfigurada,
-                                    boolean desatualizado, boolean incompleto) {
+                                    List<StatusVeiculo> veiculos, boolean desatualizado, boolean incompleto) {
 
         public StatusDosVeiculos {
             porEstado = Map.copyOf(porEstado);

@@ -76,7 +76,7 @@ Todas estão comentadas em [`.env.example`](.env.example). Nenhuma chave fica no
 
 Configurações de domínio (sem segredo) ficam em `rota-segura-api/src/main/resources/application.yml`:
 tipos de leitor (`tipos-leitor`), janela sem chegada, limite de ausência por turno, feriados
-(`calendario.dias-sem-aula`), capacidade dos veículos, mapeamento de etapas, horários de rota.
+(`calendario.dias-sem-aula`), limites de lotação, mapeamento de etapas, horários de rota.
 
 ---
 
@@ -125,7 +125,7 @@ Nunca copie dados reais da API para o repositório, logs ou prints.
 | Item | Situação atual |
 | --- | --- |
 | GPS do veículo | Não exposto. O mapa posiciona o veículo na escola de destino |
-| Capacidade do veículo | Não exposta. Configurável por id em `veiculos.capacidade`; sem ela, a ocupação fica "desconhecida" |
+| Capacidade do veículo | Lida de `/api/veiculos/{id}/dados` junto com o GPS (`veiculo.capacidade`, senão `kpi.capacidadeMaxima`). Sem ela: capacidade 0, ocupação 0% e nenhum alerta de lotação |
 | Etapa (Infantil/Fundamental) | Não exposta. Mapeie em `dashboard.etapas`; sem isso, o painel agrupa por ano escolar |
 | Gênero/raça/deficiência | Não expostos. O card "Indicadores sensíveis" informa a indisponibilidade |
 | Contato do responsável | Não exposto. "Revelar contato" fica desabilitado |

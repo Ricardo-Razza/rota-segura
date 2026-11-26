@@ -52,11 +52,10 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 /**
  * Operação (Fases 2.2b e 3.1) com relógio fixo: terça, 10/03/2026, 08:00 em Brasília (dentro da rota).
- * Cenário fictício: veículo 7 (capacidade 1) leva à escola 50; veículo 8 (capacidade 10) à escola 60.
+ * Cenário fictício: veículo 7 (capacidade 1, em veiculo.capacidade) leva à escola 50; veículo 8 (capacidade 10,
+ * só em kpi.capacidadeMaxima) à escola 60. A capacidade vem de /dados, como na API real.
  */
 @SpringBootTest(properties = {
-        "rota-segura.veiculos.capacidade.7=1",
-        "rota-segura.veiculos.capacidade.8=10",
         "rota-segura.dashboard.etapas.INFANTIL[0]=Pré II",
         "rota-segura.dashboard.etapas.FUNDAMENTAL[0]=1º ano"})
 @AutoConfigureMockMvc
@@ -113,6 +112,11 @@ class OperacaoEndpointsTest {
                 presenca("3", "103", DIA + " 07:02:00", "11"),
                 presenca("4", "103", DIA + " 07:30:00", "21"),
                 presenca("5", "102", DIA + " 07:05:00", "12"))));
+        // Capacidade lida de /dados junto com o GPS (sem posição aqui: rastreador sem localização válida).
+        when(veiculos.dados(7)).thenReturn(new DadosVeiculoDto(null, new DadosVeiculoDto.CadastroDto("1"), null));
+        when(veiculos.dados(8)).thenReturn(new DadosVeiculoDto(null, new DadosVeiculoDto.CadastroDto(null),
+                new DadosVeiculoDto.KpiDto("10")));
+        rastreamento.atualizar();
     }
 
     @Test
@@ -121,6 +125,8 @@ class OperacaoEndpointsTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.veiculos[0].placa").value("AAA0A07"))
                 .andExpect(jsonPath("$.veiculos[0].embarcados").value(2))
+                .andExpect(jsonPath("$.veiculos[0].capacidade").value(1))
+                .andExpect(jsonPath("$.veiculos[1].capacidade").value(10))
                 .andExpect(jsonPath("$.veiculos[0].ocupacao").value(200.0))
                 .andExpect(jsonPath("$.veiculos[0].faixaOcupacao").value("CRITICO"))
                 .andExpect(jsonPath("$.veiculos[0].estado").value("CONCLUIDO"))
@@ -193,6 +199,26 @@ class OperacaoEndpointsTest {
                 .andExpect(status().isForbidden());
         mvc.perform(get("/api/v1/veiculos/8/rastreamento").with(token("DIRETOR", List.of(60L), List.of())))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    void semCapacidadeNaApiFicaZeradaSemFaixaNemAlertaDeLotacao() throws Exception {
+        rastreamento.reiniciar();
+        when(veiculos.dados(7)).thenReturn(new DadosVeiculoDto(null, new DadosVeiculoDto.CadastroDto(null),
+                new DadosVeiculoDto.KpiDto(null)));
+        when(veiculos.dados(8)).thenReturn(null);
+        rastreamento.atualizar();
+
+        mvc.perform(get("/api/v1/veiculos/status").with(perfil("GESTAO")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.veiculos[0].embarcados").value(2))
+                .andExpect(jsonPath("$.veiculos[0].capacidade").value(0))
+                .andExpect(jsonPath("$.veiculos[0].ocupacao").value(0))
+                .andExpect(jsonPath("$.veiculos[0].faixaOcupacao").doesNotExist())
+                .andExpect(jsonPath("$.veiculos[1].capacidade").value(0));
+
+        ciclo.executar();
+        assertThat(alertas.findByChave("LOTACAO:VEICULO:7:" + DIA)).isEmpty();
     }
 
     @Test
@@ -366,7 +392,7 @@ class OperacaoEndpointsTest {
 
     private static DadosVeiculoDto gps(double latitude, String fixTime) {
         return new DadosVeiculoDto(new DadosVeiculoDto.LocalizacaoDto(latitude, -50.0, 0.0, 0.0, fixTime, true,
-                new DadosVeiculoDto.Atributos(false)));
+                new DadosVeiculoDto.Atributos(false)), null, new DadosVeiculoDto.KpiDto("10"));
     }
 
     private static <T> ResultadoCache<ColecaoPaginada<T>> atual(List<T> itens) {

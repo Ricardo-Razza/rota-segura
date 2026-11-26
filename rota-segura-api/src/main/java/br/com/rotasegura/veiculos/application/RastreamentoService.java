@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -42,7 +43,8 @@ import org.springframework.stereotype.Service;
 /**
  * Rastreamento GPS ao vivo: a cada {@code rota-segura.rastreamento.intervalo} (padrão 5 s) lê a última posição
  * de cada veículo com rastreador ({@code GET /api/veiculos/{id}/dados}), guarda o rastro do dia em memória,
- * calcula a cerca virtual da escola de destino e publica {@value #EVENTO_POSICAO} no tempo real.
+ * calcula a cerca virtual da escola de destino e publica {@value #EVENTO_POSICAO} no tempo real. A mesma resposta
+ * traz a capacidade do veículo, guardada para a ocupação ({@link #capacidade(long)}).
  *
  * <p>Cada ponto novo do rastro também vai para o banco ({@code ponto_rastro}), para achar onde o ônibus estava
  * em cada embarque e para o rastro do dia sobreviver a um reinício. O que passa da retenção (padrão 90 dias)
@@ -69,6 +71,8 @@ public class RastreamentoService {
     private final PontoRastroSalvoRepository salvos;
 
     private final Map<Long, Acompanhamento> acompanhados = new HashMap<>();
+    /** Lugares informados pela API em {@code /dados} na última consulta boa de cada veículo (0 = não informado). */
+    private final Map<Long, Integer> capacidades = new ConcurrentHashMap<>();
 
     public RastreamentoService(VeiculosClient veiculos, DispositivosClient dispositivos, CentralDeEventos eventos,
                                EscopoService escopo, Clock relogio, JornadaProperties jornada,
@@ -148,7 +152,9 @@ public class RastreamentoService {
     private boolean atualizarUm(long id, Cerca cerca) {
         Optional<PosicaoVeiculo> posicao;
         try {
-            posicao = consultar(id);
+            DadosVeiculoDto dados = veiculos.dados(id);
+            capacidades.put(id, dados == null ? 0 : dados.capacidadeInformada());
+            posicao = posicaoDe(dados);
         } catch (RuntimeException e) {
             marcarFalha(id);
             LOG.debug("Posição indisponível. veiculo={} motivo={}", id, e.getClass().getSimpleName());
@@ -187,13 +193,22 @@ public class RastreamentoService {
         return resultado;
     }
 
-    /** Descarta posições e rastros guardados (testes e manutenção). */
-    public synchronized void reiniciar() {
-        acompanhados.clear();
+    /**
+     * Lugares do veículo informados pela API ({@code /dados}, lido junto com o GPS).
+     *
+     * @return {@code 0} quando a API não informou ou o veículo ainda não foi consultado (ex.: sem rastreador)
+     */
+    public int capacidade(long veiculoId) {
+        return capacidades.getOrDefault(veiculoId, 0);
     }
 
-    private Optional<PosicaoVeiculo> consultar(long id) {
-        DadosVeiculoDto dados = veiculos.dados(id);
+    /** Descarta posições, rastros e capacidades guardados (testes e manutenção). */
+    public synchronized void reiniciar() {
+        acompanhados.clear();
+        capacidades.clear();
+    }
+
+    private Optional<PosicaoVeiculo> posicaoDe(DadosVeiculoDto dados) {
         LocalizacaoDto l = dados == null ? null : dados.localizacao();
         if (l == null || Boolean.FALSE.equals(l.valid()) || !Geo.coordenadaValida(l.latitude(), l.longitude())) {
             return Optional.empty();

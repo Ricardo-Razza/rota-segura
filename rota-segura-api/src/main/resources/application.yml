@@ -67,9 +67,8 @@ rota-segura:
     # Sem leitura há mais que isso, o leitor aparece como OFFLINE.
     limite-offline: 30m
   veiculos:
-    # A API não informa capacidade. Lugares por id de veículo; sem valor, a ocupação fica "desconhecida".
-    # Ex.: capacidade: { "7": 44, "8": 30 }
-    capacidade: {}
+    # A capacidade vem da API (/api/veiculos/{id}/dados: veiculo.capacidade ou kpi.capacidadeMaxima).
+    # Sem ela, capacidade 0 e ocupação 0%, sem alerta de lotação.
     # Dias letivos anteriores usados para estimar "esperados" e tempo de trajeto de cada veículo.
     dias-historico: 10
     # Mesma regra para o card do veículo e para o alerta de lotação.

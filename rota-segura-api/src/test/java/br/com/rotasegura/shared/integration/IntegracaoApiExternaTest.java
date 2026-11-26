@@ -243,10 +243,13 @@ class IntegracaoApiExternaTest {
         assertThat(dados.localizacao().fixTime()).isEqualTo("2026-03-10T10:59:57.000+00:00");
         assertThat(dados.localizacao().attributes().motion()).isTrue();
         assertThat(dados.toString()).as("nome do aluno nem é desserializado").doesNotContain("Ficticio");
+        assertThat(dados.capacidadeInformada()).as("veiculo.capacidade ausente: usa kpi.capacidadeMaxima")
+                .isEqualTo(40);
 
         var comErro = veiculos.dados(8);
         assertThat(comErro.localizacao().latitude()).isNull();
         assertThat(comErro.localizacao().fixTime()).isNull();
+        assertThat(comErro.capacidadeInformada()).as("sem capacidade na API: zerada").isZero();
     }
 
     private static void stubPaginaVeiculos(int pagina, String currentPageJson, int ultima, String... placas) {
