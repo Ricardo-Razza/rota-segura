@@ -234,7 +234,10 @@ const ROTULO_FAIXA = { CRITICO: 'Crítico', ATENCAO: 'Atenção', OK: 'Bem' } as
       grid-template-columns: minmax(280px, 340px) 1fr minmax(320px, 400px);
       grid-template-areas: 'lista mapa detalhe';
       gap: 16px;
-      height: calc(100dvh - 130px);
+      /* isolation: o aviso sobre o mapa (z-index 500) não passa por cima da barra do topo nem do menu
+         da conta. --rs-reservado: espaço do topo, filtros ativos e margens, medido pelo shell. */
+      isolation: isolate;
+      height: calc(100dvh - var(--rs-reservado, 130px));
       min-height: 560px;
     }
     .lista {
@@ -508,7 +511,8 @@ const ROTULO_FAIXA = { CRITICO: 'Crítico', ATENCAO: 'Atenção', OK: 'Bem' } as
     @media (max-width: 1180px) {
       .tela {
         grid-template-columns: minmax(260px, 320px) 1fr;
-        grid-template-rows: minmax(0, 1fr) auto;
+        /* O mapa garante 320px; o detalhe da escola usa o resto e rola por dentro (não esmaga o mapa). */
+        grid-template-rows: minmax(320px, 3fr) minmax(0, 2fr);
         grid-template-areas:
           'lista mapa'
           'lista detalhe';

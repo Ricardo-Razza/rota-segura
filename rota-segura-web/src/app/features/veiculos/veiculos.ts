@@ -83,12 +83,6 @@ const RELOGIO_MS = 5000;
       </div>
 
       @if (aba() === 'veiculos') {
-        @if (status.dados()?.capacidadeNaoConfigurada) {
-          <p class="rs-aviso">
-            Capacidade de alguns veículos não configurada: a ocupação desses aparece como "—" e não
-            gera alerta de lotação.
-          </p>
-        }
         <div class="rs-pagina__acoes">
           <label>
             <span class="rs-somente-leitor">Buscar por placa</span>
@@ -143,7 +137,10 @@ const RELOGIO_MS = 5000;
                           [tom]="faixas[faixa]"
                         />
                       } @else {
-                        <span class="rs-nota">Ocupação —</span>
+                        <!-- Sem capacidade na API: ocupação zerada e sem faixa (não gera alerta). -->
+                        <span class="rs-nota" title="A API não informou a capacidade deste veículo"
+                          >Ocupação 0%</span
+                        >
                       }
                     </span>
                     @if (previsao(v); as p) {
@@ -297,7 +294,7 @@ const RELOGIO_MS = 5000;
                 </div>
                 <div>
                   <dt>Capacidade</dt>
-                  <dd>{{ d.veiculo.capacidade ?? '—' }}</dd>
+                  <dd>{{ d.veiculo.capacidade }}</dd>
                 </div>
                 <div>
                   <dt>GPS</dt>

@@ -311,9 +311,13 @@ interface LinhaAnoEscolar {
     </div>
   `,
   styles: `
+    /* isolation: os painéis sobre o mapa (z-index 500, acima do Leaflet) ficam presos nesta camada e
+       nunca passam por cima da barra do topo nem do menu da conta (z-index 30).
+       --rs-reservado: espaço do topo, filtros ativos e margens, medido pelo shell. */
     .hero {
       position: relative;
-      height: clamp(500px, calc(100dvh - 190px), 760px);
+      isolation: isolate;
+      height: clamp(500px, calc(100dvh - var(--rs-reservado, 190px)), 760px);
     }
     .hero__mapa {
       position: absolute;

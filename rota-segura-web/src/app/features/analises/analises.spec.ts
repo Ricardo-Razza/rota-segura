@@ -260,7 +260,6 @@ describe('tela de Análises', () => {
         avaliadoEm: '2026-03-13T15:00:00',
         porEstado: {},
         veiculos: [{ id: 7, placa: 'AAA0A07', prefixo: 'P-07' }],
-        capacidadeNaoConfigurada: false,
         desatualizado: false,
         incompleto: false,
       });

@@ -165,8 +165,11 @@ export interface StatusVeiculo {
   aBordo: number;
   chegaram: number;
   esperados: number;
-  capacidade: number | null;
-  ocupacao: number | null;
+  /** Lugares informados pela API; 0 quando não informada. */
+  capacidade: number;
+  /** Embarcados / capacidade, em %; 0 sem capacidade. */
+  ocupacao: number;
+  /** Nula sem capacidade (não há como classificar a lotação). */
   faixaOcupacao: FaixaOcupacao | null;
   escolaId: number | null;
   /** Coordenadas da escola de destino (não é o GPS do veículo). */
@@ -191,7 +194,6 @@ export interface StatusDosVeiculos {
   avaliadoEm: string;
   porEstado: Partial<Record<EstadoVeiculo, number>>;
   veiculos: StatusVeiculo[];
-  capacidadeNaoConfigurada: boolean;
   desatualizado: boolean;
   incompleto: boolean;
 }

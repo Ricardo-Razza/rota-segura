@@ -4,6 +4,7 @@ import {
   ElementRef,
   HostListener,
   OnDestroy,
+  afterNextRender,
   computed,
   effect,
   inject,
@@ -91,7 +92,7 @@ export function iniciais(nome: string | null | undefined): string {
   template: `
     <a class="pular" href="#conteudo">Pular para o conteúdo</a>
 
-    <header class="topo">
+    <header class="topo" #topo>
       <a class="marca" routerLink="/dashboard" queryParamsHandling="preserve" aria-label="Início">
         <img src="logo.svg" alt="" width="36" height="29" />
         <span class="marca__nome rs-marca"
@@ -209,8 +210,9 @@ export function iniciais(nome: string | null | undefined): string {
       </div>
     </header>
 
-    @if (secaoAgora() || chips().length) {
-      <div class="contexto">
+    <!-- Sempre presente (some com :empty) para o ResizeObserver medir o espaço acima do conteúdo. -->
+    <div class="contexto" #contexto>
+      @if (secaoAgora() || chips().length) {
         @if (secaoAgora()) {
           <nav class="rs-pilulas" aria-label="Seções de Agora">
             @for (s of secoesAgora; track s.rota) {
@@ -243,10 +245,10 @@ export function iniciais(nome: string | null | undefined): string {
             </li>
           </ul>
         }
-      </div>
-    }
+      }
+    </div>
 
-    <main id="conteudo" tabindex="-1">
+    <main id="conteudo" tabindex="-1" #conteudo>
       <router-outlet />
     </main>
 
@@ -471,6 +473,9 @@ export function iniciais(nome: string | null | undefined): string {
       flex-wrap: wrap;
       margin: 14px 16px 0;
     }
+    .contexto:empty {
+      display: none;
+    }
     .chips {
       display: flex;
       align-items: center;
@@ -650,10 +655,24 @@ export class Shell implements OnDestroy {
   protected readonly busca = viewChild.required(BuscaGlobal);
   protected readonly painel = viewChild.required(PainelFiltros);
   private readonly botaoUsuario = viewChild<ElementRef<HTMLButtonElement>>('botaoUsuario');
+  private readonly topo = viewChild.required<ElementRef<HTMLElement>>('topo');
+  private readonly contexto = viewChild.required<ElementRef<HTMLElement>>('contexto');
+  private readonly conteudo = viewChild.required<ElementRef<HTMLElement>>('conteudo');
+  private observadorAltura: ResizeObserver | null = null;
 
   constructor() {
     this.sse.conectar();
     this.alertas.iniciar();
+    // Telas de altura fixa (mapa do Resumo, Escolas) descontam o espaço real acima e abaixo do conteúdo,
+    // que muda com os filtros ativos, a subnavegação de "Agora" e a largura da tela.
+    afterNextRender(() => {
+      this.medirReservado();
+      if (typeof ResizeObserver !== 'undefined') {
+        this.observadorAltura = new ResizeObserver(() => this.medirReservado());
+        this.observadorAltura.observe(this.topo().nativeElement);
+        this.observadorAltura.observe(this.contexto().nativeElement);
+      }
+    });
     effect((aoLimpar) => {
       const ano = this.filtros.anoLetivo();
       const assinatura = this.api.opcoesDeFiltro(ano).subscribe({
@@ -672,6 +691,23 @@ export class Shell implements OnDestroy {
   ngOnDestroy(): void {
     this.sse.desconectar();
     this.alertas.parar();
+    this.observadorAltura?.disconnect();
+    (this.host.nativeElement as HTMLElement).style.removeProperty('--rs-reservado');
+  }
+
+  @HostListener('window:resize')
+  protected medirReservado(): void {
+    const main = this.conteudo().nativeElement;
+    const estilo = getComputedStyle(main);
+    // main.offsetTop já inclui margens do topo e a linha de contexto (o host não é posicionado).
+    const reservado =
+      main.offsetTop + parseFloat(estilo.paddingTop || '0') + parseFloat(estilo.paddingBottom || '0');
+    if (reservado > 0) {
+      (this.host.nativeElement as HTMLElement).style.setProperty(
+        '--rs-reservado',
+        `${Math.round(reservado)}px`,
+      );
+    }
   }
 
   protected ativo(d: Destino): boolean {
