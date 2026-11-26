@@ -701,7 +701,9 @@ export class Shell implements OnDestroy {
     const estilo = getComputedStyle(main);
     // main.offsetTop já inclui margens do topo e a linha de contexto (o host não é posicionado).
     const reservado =
-      main.offsetTop + parseFloat(estilo.paddingTop || '0') + parseFloat(estilo.paddingBottom || '0');
+      main.offsetTop +
+      parseFloat(estilo.paddingTop || '0') +
+      parseFloat(estilo.paddingBottom || '0');
     if (reservado > 0) {
       (this.host.nativeElement as HTMLElement).style.setProperty(
         '--rs-reservado',

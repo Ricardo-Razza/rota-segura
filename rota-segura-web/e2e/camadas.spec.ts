@@ -19,7 +19,10 @@ async function entrar(page: Page): Promise<void> {
 async function estaPorCima(alvo: Locator): Promise<boolean> {
   return alvo.evaluate((el) => {
     const r = el.getBoundingClientRect();
-    const topo = document.elementFromPoint(r.left + r.width / 2, r.top + Math.min(r.height / 2, 20));
+    const topo = document.elementFromPoint(
+      r.left + r.width / 2,
+      r.top + Math.min(r.height / 2, 20),
+    );
     return topo !== null && el.contains(topo);
   });
 }
@@ -57,14 +60,18 @@ test('ao rolar, os painéis do mapa passam por baixo da barra do topo', async ({
   expect(await estaPorCima(marca)).toBe(true);
 });
 
-test('o mapa do Resumo desconta a linha de filtros ativos (sem rolagem extra)', async ({ page }) => {
+test('o mapa do Resumo desconta a linha de filtros ativos (sem rolagem extra)', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await entrar(page);
 
   const hero = page.locator('.hero');
   const altura = async () => (await hero.boundingBox())!.height;
   const reservado = () =>
-    page.locator('rs-shell').evaluate((el) => getComputedStyle(el).getPropertyValue('--rs-reservado'));
+    page
+      .locator('rs-shell')
+      .evaluate((el) => getComputedStyle(el).getPropertyValue('--rs-reservado'));
   await expect.poll(reservado).toMatch(/^\d+px$/);
   const antes = await altura();
   const reservadoAntes = await reservado();
