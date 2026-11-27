@@ -2,7 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
 import { Observable, Subject, filter, map } from 'rxjs';
 import { LinhaJornada, QuadroDoDia } from '../../core/api/modelos';
 import { SseService } from '../../core/sse/sse.service';
@@ -151,6 +151,23 @@ describe('Jornada (tela)', () => {
     expect(coluna('EMBARCADO')).toEqual([]);
     expect(coluna('NA_ESCOLA')).toEqual([102]);
     expect(coluna('AGUARDANDO')).toEqual([101]);
+  });
+
+  it('vindo da Frota (?onibus=), filtra o quadro pelo veículo e consome o parâmetro', async () => {
+    const navegar = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    fixture.componentRef.setInput('onibus', '7');
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const pedido = http.expectOne((r) => r.url === '/api/v1/jornadas');
+    expect(pedido.request.params.get('veiculoId')).toBe('7');
+    pedido.flush(quadro([linha(102, 'EMBARCADO')]));
+    // O menu preserva a URL: sem tirar o parâmetro, o filtro voltaria em toda visita.
+    expect(navegar).toHaveBeenCalledWith([], {
+      queryParams: { onibus: null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
   });
 
   it('evento de outro dia não mexe no quadro', async () => {

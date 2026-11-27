@@ -1,0 +1,165 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.painel {
+  border: 1px solid var(--vidro-borda);
+  border-radius: var(--raio-vidro);
+  background: var(--vidro);
+  box-shadow: var(--vidro-sombra);
+}
+h2 {
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.topo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px;
+}
+.topo h2 {
+  font-family: var(--fonte-mono);
+  font-size: 18px;
+}
+.voltar {
+  margin-left: auto;
+}
+.dados {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  margin: 0;
+  border-top: 1px solid var(--borda);
+}
+.dados div {
+  padding: 8px 18px 10px;
+}
+dt {
+  color: var(--texto-suave);
+  font-size: 11px;
+}
+dd {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.controles-mapa {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.abas {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--borda-forte);
+  border-radius: var(--raio);
+  background: var(--superficie-sutil);
+}
+.abas button {
+  padding: 5px 14px;
+  border: 0;
+  border-radius: var(--raio-sm);
+  background: transparent;
+  color: var(--texto-suave);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.abas button[aria-pressed='true'] {
+  background: var(--realce);
+  color: var(--texto-sobre-realce);
+}
+.marcar {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--texto-suave);
+  font-size: 12px;
+}
+
+.linha {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 14px 18px;
+}
+.linha .rs-nota {
+  margin: 0;
+}
+/* Botão em forma de chave liga/desliga. */
+.chave {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  padding: 4px;
+  border: 0;
+  border-radius: var(--raio-sm);
+  background: transparent;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.chave i {
+  position: relative;
+  width: 40px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--borda-forte);
+}
+.chave i::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--texto);
+  transition: left 0.15s;
+}
+.chave[aria-expanded='true'] i {
+  background: var(--sucesso);
+}
+.chave[aria-expanded='true'] i::after {
+  left: 21px;
+  background: var(--texto-sobre-marca);
+}
+@media (prefers-reduced-motion: reduce) {
+  .chave i::after {
+    transition: none;
+  }
+}
+
+.corpo {
+  padding: 0 18px 16px;
+  border-top: 1px solid var(--borda);
+}
+.corpo ul {
+  max-height: 280px;
+  overflow-y: auto;
+}
+.corpo a {
+  display: inline-block;
+  margin-top: 12px;
+}
+h3 {
+  margin: 12px 0 4px;
+  font-size: 13px;
+}
+.cresce {
+  flex: 1;
+}

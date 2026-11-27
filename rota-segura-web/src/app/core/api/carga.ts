@@ -1,5 +1,5 @@
 import { DestroyRef, Signal, computed, effect, inject, signal, untracked } from '@angular/core';
-import { Observable, Subscription } from 'rxjs';
+import { Observable, Subscription, map } from 'rxjs';
 import { EstadoCard } from '../../shared/ui/chart-card';
 
 export interface Carga<T> {
@@ -26,6 +26,41 @@ function desatualizadoPadrao(dados: unknown): boolean {
     dados !== null &&
     (dados as { desatualizado?: unknown }).desatualizado === true
   );
+}
+
+/**
+ * Como {@link carga}, para dados de "um item escolhido" (veículo, aluno, dia): o resultado só vale para a
+ * chave pedida. O de outra chave não aparece enquanto a nova carrega nem se a busca dela falhar.
+ */
+export function cargaPorChave<K extends string | number, T>(
+  chave: () => K | null,
+  buscar: (chave: K) => Observable<T>,
+  opcoes: OpcoesCarga<T> = {},
+): Carga<T> {
+  const base = carga<{ chave: K; valor: T }>(
+    () => {
+      const atual = chave();
+      return atual === null ? null : buscar(atual).pipe(map((valor) => ({ chave: atual, valor })));
+    },
+    {
+      vazio: (d) => opcoes.vazio?.(d.valor) ?? false,
+      desatualizado: (d) => (opcoes.desatualizado ?? desatualizadoPadrao)(d.valor),
+    },
+  );
+  const dados = computed<T | null>(() => {
+    const recebido = base.dados();
+    return recebido !== null && recebido.chave === chave() ? recebido.valor : null;
+  });
+  const estado = computed<EstadoCard>(() => {
+    if (dados() !== null) {
+      return base.estado();
+    }
+    if (base.carregando()) {
+      return 'carregando';
+    }
+    return chave() === null ? 'vazio' : 'erro';
+  });
+  return { ...base, dados, estado };
 }
 
 /**

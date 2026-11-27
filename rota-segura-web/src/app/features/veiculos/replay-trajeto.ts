@@ -10,10 +10,12 @@ import {
   input,
   linkedSignal,
   signal,
+  untracked,
   viewChild,
 } from '@angular/core';
 import type * as L from 'leaflet';
-import { carga } from '../../core/api/carga';
+import { cargaPorChave } from '../../core/api/carga';
+import { ParadaAprendida } from '../../core/api/modelos';
 import { PainelApi } from '../../core/api/painel-api.service';
 import { hora } from '../../shared/formato';
 import { ChartCard } from '../../shared/ui/chart-card';
@@ -26,6 +28,7 @@ import {
   hojeIso,
   instante,
   posicaoNoInstante,
+  rotuloParada,
 } from './veiculos.logica';
 
 /** "07:03" de um instante em ms (horário local, o da operação). */
@@ -40,29 +43,34 @@ function cor(token: string): string {
 /**
  * Replay do trajeto de um dia: escolhe a data, arrasta a linha do tempo (ou dá play) e vê o ônibus andar
  * pelo caminho guardado, com os embarques como pontos. Nada de aluno: o embarque é só hora e local.
+ * Quem usa pode projetar controles no cabeçalho (`visao`) e uma nota no fim do card (`rodape`).
  */
 @Component({
   selector: 'rs-replay-trajeto',
   imports: [ChartCard, Icone],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: { '[hidden]': 'oculto()' },
   template: `
     <rs-chart-card
-      titulo="Replay do trajeto"
+      titulo="Trajeto"
       [estado]="trajeto.estado()"
       [atualizadoEm]="trajeto.atualizadoEm()"
       mensagemVazio="Sem trajeto guardado nesse dia. O GPS do ônibus fica guardado por 90 dias."
       (tentarDeNovo)="trajeto.recarregar()"
     >
-      <label acoes class="data">
-        <span>Dia</span>
-        <input
-          class="rs-campo"
-          type="date"
-          [max]="hoje"
-          [value]="data()"
-          (change)="escolherData($any($event.target).value)"
-        />
-      </label>
+      <div acoes class="acoes">
+        <ng-content select="[visao]" />
+        <label class="data">
+          <span>Dia</span>
+          <input
+            class="rs-campo"
+            type="date"
+            [max]="hoje"
+            [value]="data()"
+            (change)="escolherData($any($event.target).value)"
+          />
+        </label>
+      </div>
       <div
         #mapa
         class="mapa"
@@ -130,13 +138,29 @@ function cor(token: string): string {
           <li><span class="traco traco--claro"></span>Caminho do dia</li>
           <li><span class="ponto" style="background: var(--acento)"></span>Embarque</li>
           <li><span class="ponto ponto--cerca"></span>Escola</li>
+          @if (paradas().length) {
+            <li><span class="ponto ponto--parada"></span>Parada aprendida</li>
+          }
         </ul>
       }
+      <ng-content select="[rodape]" />
     </rs-chart-card>
   `,
   styles: `
     :host {
       display: block;
+    }
+    :host([hidden]) {
+      display: none;
+    }
+    .acoes {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+    }
+    .ponto--parada {
+      border: 2px solid var(--marca);
     }
     .data {
       display: flex;
@@ -145,7 +169,7 @@ function cor(token: string): string {
       font-size: 12px;
     }
     .mapa {
-      height: clamp(280px, 45dvh, 460px);
+      height: clamp(380px, 60dvh, 560px);
       border-radius: var(--raio-sm);
       z-index: 0;
       background: var(--fundo);
@@ -218,6 +242,10 @@ export class ReplayTrajeto implements OnDestroy {
   private readonly api = inject(PainelApi);
 
   readonly veiculoId = input.required<number>();
+  /** Paradas aprendidas do veículo (camada opcional). */
+  readonly paradas = input<ParadaAprendida[]>([]);
+  /** Escondido (a tela está no "ao vivo"): o dia escolhido é mantido. */
+  readonly oculto = input(false);
 
   protected readonly hora = hora;
   protected readonly velocidades = VELOCIDADES_REPLAY;
@@ -227,9 +255,15 @@ export class ReplayTrajeto implements OnDestroy {
   protected readonly velocidade = signal<number>(4);
   protected readonly tocando = signal(false);
 
-  protected readonly trajeto = carga(() => this.api.trajeto(this.veiculoId(), this.data()), {
-    vazio: (t) => t.pontos.length === 0,
-  });
+  /** Chave "veículo|dia": o caminho de outro ônibus ou de outro dia nunca aparece no lugar. */
+  protected readonly trajeto = cargaPorChave(
+    () => `${this.veiculoId()}|${this.data()}`,
+    (chave) => {
+      const [id, data] = chave.split('|');
+      return this.api.trajeto(Number(id), data);
+    },
+    { vazio: (t) => t.pontos.length === 0 },
+  );
 
   private readonly tempos = computed(() =>
     (this.trajeto.dados()?.pontos ?? []).map((p) => instante(p.em)),
@@ -260,6 +294,7 @@ export class ReplayTrajeto implements OnDestroy {
   private feito: L.Polyline | null = null;
   private onibus: L.CircleMarker | null = null;
   private embarques: { marcador: L.CircleMarker; ms: number }[] = [];
+  private camadaParadas: L.LayerGroup | null = null;
   private desenhado: unknown = null;
   private quadro = 0;
   private ultimoQuadro = 0;
@@ -284,18 +319,30 @@ export class ReplayTrajeto implements OnDestroy {
         attribution: CONFIG_MAPA.atribuicao,
       }).addTo(this.mapa);
       this.observador = new ResizeObserver(() => {
+        // Escondido, o contêiner mede zero: redesenha só quando voltar a aparecer.
+        if (this.elemento().nativeElement.clientWidth === 0) {
+          return;
+        }
         this.mapa?.invalidateSize();
         this.desenhado = null;
         this.desenharTrajeto();
         this.moverOnibus();
+        this.desenharParadas();
       });
       this.observador.observe(this.elemento().nativeElement);
       this.desenharTrajeto();
       this.moverOnibus();
+      this.desenharParadas();
     });
     effect(() => {
       this.desenharTrajeto();
       this.moverOnibus();
+    });
+    effect(() => this.desenharParadas());
+    effect(() => {
+      if (this.oculto()) {
+        untracked(() => this.parar());
+      }
     });
   }
 
@@ -423,6 +470,29 @@ export class ReplayTrajeto implements OnDestroy {
       maxZoom: 16,
       animate: false,
     });
+  }
+
+  /** Paradas aprendidas: anéis na cor da marca, maiores que os pontos de embarque. */
+  private desenharParadas(): void {
+    const paradas = this.paradas();
+    const Lf = this.leaflet;
+    if (!Lf || !this.mapa) {
+      return;
+    }
+    this.camadaParadas?.remove();
+    this.camadaParadas = Lf.layerGroup().addTo(this.mapa);
+    const verde = cor('--marca');
+    for (const p of paradas) {
+      Lf.circleMarker([p.latitude, p.longitude], {
+        radius: 11,
+        color: verde,
+        weight: 2,
+        fillColor: verde,
+        fillOpacity: 0.12,
+      })
+        .bindTooltip(rotuloParada(p))
+        .addTo(this.camadaParadas);
+    }
   }
 
   /** Ônibus, caminho já feito e embarques já ocorridos no momento escolhido. */

@@ -2,11 +2,15 @@ import {
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
+  ElementRef,
+  Injector,
+  afterNextRender,
   computed,
   inject,
   input,
   linkedSignal,
   signal,
+  viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { auditTime, bufferTime, filter, merge } from 'rxjs';
@@ -16,13 +20,12 @@ import { PainelApi } from '../../core/api/painel-api.service';
 import { FiltrosStore } from '../../core/filtros/filtros.store';
 import { IndicadorConexao } from '../../core/sse/indicador-conexao';
 import { SseService } from '../../core/sse/sse.service';
-import { haQuanto, hora, minutos, percentual, rotuloVeiculo } from '../../shared/formato';
+import { haQuanto, percentual, rotuloVeiculo } from '../../shared/formato';
 import { ChartCard } from '../../shared/ui/chart-card';
 import { FilterChips, OpcaoChip } from '../../shared/ui/filter-chips';
 import { StatusBadge } from '../../shared/ui/status-badge';
-import { JORNADA } from '../../shared/ui/tom';
+import { DetalheDoVeiculo } from './detalhe-veiculo';
 import { MapaVeiculos } from './mapa-veiculos';
-import { ReplayTrajeto } from './replay-trajeto';
 import {
   ESTADO_VEICULO,
   FAIXA,
@@ -30,13 +33,10 @@ import {
   agruparLeitores,
   aplicarPosicoes,
   JANELA_POSICOES_MS,
-  distancia,
   filtrarVeiculos,
-  horariosDaParada,
   situacaoGps,
   textoPrevisao,
 } from './veiculos.logica';
-import { Icone } from '../../shared/ui/icone';
 
 type Aba = 'veiculos' | 'leitores';
 
@@ -46,15 +46,7 @@ const RELOGIO_MS = 5000;
 /** Veículos (status do dia, mapa, detalhe) e saúde dos leitores faciais. Tudo somente leitura. */
 @Component({
   selector: 'rs-veiculos',
-  imports: [
-    Icone,
-    ChartCard,
-    FilterChips,
-    StatusBadge,
-    MapaVeiculos,
-    ReplayTrajeto,
-    IndicadorConexao,
-  ],
+  imports: [ChartCard, FilterChips, StatusBadge, MapaVeiculos, DetalheDoVeiculo, IndicadorConexao],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="rs-pagina">
@@ -101,7 +93,20 @@ const RELOGIO_MS = 5000;
           />
         </div>
 
-        <div class="frota">
+        @if (rastreio.estado() === 'erro') {
+          <p class="rs-aviso">
+            Não foi possível carregar o GPS.
+            <button
+              type="button"
+              class="rs-botao rs-botao--pequeno"
+              (click)="rastreio.recarregar()"
+            >
+              Tentar de novo
+            </button>
+          </p>
+        }
+
+        <div class="frota" [class.frota--detalhe]="selecionadoId() !== null">
           <rs-chart-card
             class="frota__lista"
             titulo="Veículos hoje"
@@ -167,201 +172,40 @@ const RELOGIO_MS = 5000;
             </ul>
           </rs-chart-card>
 
-          <rs-chart-card
-            class="frota__mapa"
-            titulo="Mapa ao vivo"
-            [estado]="status.estado()"
-            (tentarDeNovo)="status.recarregar()"
-          >
-            <rs-mapa-veiculos
-              altura="clamp(380px, calc(100dvh - 400px), 720px)"
+          @if (selecionadoId(); as id) {
+            <rs-detalhe-veiculo
+              class="frota__mapa"
+              [veiculoId]="id"
               [veiculos]="filtrados()"
               [rastreios]="rastreios()"
               [raioCercaM]="rastreio.dados()?.raioCercaM ?? 0"
-              [selecionadoId]="selecionadoId()"
-              [paradas]="paradasNoMapa()"
+              [agora]="agora()"
+              (fechar)="selecionar(-1)"
               (selecionar)="selecionar($event)"
             />
-            @if (selecionadoId() !== null) {
-              <div class="paradas">
-                <label>
-                  <input
-                    type="checkbox"
-                    [checked]="mostrarParadas()"
-                    (change)="mostrarParadas.set($any($event.target).checked)"
-                  />
-                  Mostrar paradas aprendidas do veículo selecionado
-                </label>
-                @if (mostrarParadas()) {
-                  @switch (paradas.estado()) {
-                    @case ('carregando') {
-                      <span class="rs-nota">Aprendendo as paradas…</span>
-                    }
-                    @case ('erro') {
-                      <span class="rs-aviso"
-                        >Não foi possível carregar as paradas.
-                        <button
-                          type="button"
-                          class="rs-botao rs-botao--pequeno"
-                          (click)="paradas.recarregar()"
-                        >
-                          Tentar de novo
-                        </button></span
-                      >
-                    }
-                    @default {
-                      @if (paradas.dados(); as p) {
-                        <span class="rs-nota">
-                          @if (p.paradas.length) {
-                            {{ p.paradas.length }} parada(s) em {{ p.diasAnalisados }} dia(s)
-                            letivo(s):
-                            @for (pa of p.paradas; track $index) {
-                              <span class="rs-mono">{{ horarios(pa) }}</span>{{
-                                $last ? '' : ' · '
-                              }}
-                            }
-                          } @else {
-                            Ainda sem paradas: são precisos ao menos 3 embarques no mesmo ponto com
-                            GPS guardado.
-                          }
-                        </span>
-                      }
-                    }
-                  }
-                }
-              </div>
-            }
-            @if (rastreio.estado() === 'erro') {
-              <p class="rs-aviso">
-                Não foi possível carregar o GPS.
-                <button
-                  type="button"
-                  class="rs-botao rs-botao--pequeno"
-                  (click)="rastreio.recarregar()"
-                >
-                  Tentar de novo
-                </button>
-              </p>
-            } @else if (rastreio.dados(); as g) {
-              <p class="rs-nota">
-                {{ comGps() }} de {{ filtrados().length }} veículo(s) com GPS · posição consultada a
-                cada {{ g.intervaloS }} s
-              </p>
-            }
-          </rs-chart-card>
-        </div>
-
-        @if (selecionadoId() !== null) {
-          <rs-chart-card
-            titulo="Detalhe do veículo"
-            [estado]="detalhe.estado()"
-            [atualizadoEm]="detalhe.atualizadoEm()"
-            (tentarDeNovo)="detalhe.recarregar()"
-          >
-            <button
-              acoes
-              type="button"
-              class="rs-botao rs-botao--pequeno"
-              (click)="selecionar(-1)"
-              aria-label="Fechar detalhe"
+          } @else {
+            <rs-chart-card
+              class="frota__mapa"
+              titulo="Mapa ao vivo"
+              [estado]="status.estado()"
+              (tentarDeNovo)="status.recarregar()"
             >
-              <rs-icone nome="x" />
-            </button>
-            @if (detalhe.dados(); as d) {
-              <dl class="resumo">
-                <div>
-                  <dt>Veículo</dt>
-                  <dd class="rs-mono">{{ rotulo(d.veiculo) }}</dd>
-                </div>
-                <div>
-                  <dt>Saída (1º embarque)</dt>
-                  <dd>{{ hora(d.veiculo.saida) }}</dd>
-                </div>
-                <div>
-                  <dt>Tempo médio (histórico)</dt>
-                  <dd>{{ minutos(d.veiculo.tempoMedioMin) }}</dd>
-                </div>
-                <div>
-                  <dt>Previsão de chegada</dt>
-                  @if (previsao(d.veiculo); as p) {
-                    <dd>
-                      {{ p.chegada.replace('Chega às ', '') }}
-                      <rs-status-badge [texto]="p.comparacao" [tom]="p.tom" />
-                    </dd>
-                  } @else {
-                    <dd>—</dd>
-                  }
-                </div>
-                <div>
-                  <dt>Capacidade</dt>
-                  <dd>{{ d.veiculo.capacidade }}</dd>
-                </div>
-                <div>
-                  <dt>GPS</dt>
-                  <dd>
-                    <rs-status-badge
-                      [texto]="gps(d.veiculo.id).texto"
-                      [tom]="gps(d.veiculo.id).tom"
-                    />
-                  </dd>
-                </div>
-                @if (rastreioDe(d.veiculo.id); as r) {
-                  <div>
-                    <dt>Distância até a escola</dt>
-                    <dd>{{ distancia(r.distanciaEscolaM) }}</dd>
-                  </div>
-                  <div>
-                    <dt>Na escola desde</dt>
-                    <dd>{{ hora(r.naCercaDesde) }}</dd>
-                  </div>
-                }
-              </dl>
-              <div class="rs-grade rs-grade--2">
-                <div>
-                  <h3>Embarcados hoje ({{ d.embarcados.length }})</h3>
-                  <ul class="rs-lista">
-                    @for (e of d.embarcados; track e.alunoId) {
-                      <li>
-                        <span class="rs-avatar" aria-hidden="true">{{ e.iniciais || '?' }}</span>
-                        <span class="cresce"
-                          >{{ e.iniciais || 'Aluno' }} · {{ e.turma || 'Sem turma' }}</span
-                        >
-                        <rs-status-badge
-                          [texto]="jornada[e.estado].rotulo"
-                          [tom]="jornada[e.estado].tom"
-                        />
-                        <span class="rs-mono">{{ hora(e.embarqueEm) }}</span>
-                      </li>
-                    } @empty {
-                      <li class="rs-nota">Ninguém embarcou hoje.</li>
-                    }
-                  </ul>
-                </div>
-                <div>
-                  <h3>Últimas leituras</h3>
-                  <ul class="rs-lista">
-                    @for (l of d.ultimasLeituras; track $index) {
-                      <li>
-                        <span class="rs-mono">{{ hora(l.dataHora) }}</span>
-                        <span class="cresce"
-                          >{{ l.tipo === 'EMBARQUE' ? 'Embarque' : 'Chegada' }} · aluno #{{
-                            l.alunoId
-                          }}</span
-                        >
-                        <span class="rs-nota">leitor #{{ l.leitorId }}</span>
-                      </li>
-                    } @empty {
-                      <li class="rs-nota">Sem leituras hoje.</li>
-                    }
-                  </ul>
-                </div>
-              </div>
-            }
-          </rs-chart-card>
-          @if (selecionadoId(); as id) {
-            <rs-replay-trajeto [veiculoId]="id" />
+              <rs-mapa-veiculos
+                altura="clamp(380px, calc(100dvh - 400px), 720px)"
+                [veiculos]="filtrados()"
+                [rastreios]="rastreios()"
+                [raioCercaM]="rastreio.dados()?.raioCercaM ?? 0"
+                (selecionar)="selecionar($event)"
+              />
+              @if (rastreio.dados(); as g) {
+                <p class="rs-nota">
+                  {{ comGps() }} de {{ filtrados().length }} veículo(s) com GPS · posição consultada
+                  a cada {{ g.intervaloS }} s
+                </p>
+              }
+            </rs-chart-card>
           }
-        }
+        </div>
       } @else {
         <rs-chart-card
           titulo="Leitores faciais"
@@ -414,12 +258,17 @@ const RELOGIO_MS = 5000;
       gap: 16px;
       align-items: start;
     }
+    .frota--detalhe {
+      grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
+    }
     .frota__mapa {
       order: 2;
+      scroll-margin-top: 90px;
     }
     @media (max-width: 1000px) {
-      .frota {
-        grid-template-columns: 1fr;
+      .frota,
+      .frota--detalhe {
+        grid-template-columns: minmax(0, 1fr);
       }
       .frota__mapa {
         order: -1;
@@ -434,6 +283,9 @@ const RELOGIO_MS = 5000;
       gap: 8px;
       max-height: clamp(380px, calc(100dvh - 400px), 720px);
       overflow-y: auto;
+    }
+    .frota--detalhe .cards {
+      max-height: 820px;
     }
     .cartao {
       display: flex;
@@ -459,30 +311,8 @@ const RELOGIO_MS = 5000;
       gap: 8px;
       flex-wrap: wrap;
     }
-    .resumo {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 20px;
-      margin: 0 0 12px;
-    }
-    dt {
-      color: var(--texto-suave);
-      font-size: 12px;
-    }
-    dd {
-      margin: 0;
-      font-weight: 600;
-    }
     .cresce {
       flex: 1;
-    }
-    .paradas {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 6px 12px;
-      margin-top: 8px;
-      font-size: 13px;
     }
     h3 {
       margin: 12px 0 4px;
@@ -499,15 +329,10 @@ export class Veiculos {
 
   protected readonly estadoVeiculo = ESTADO_VEICULO;
   protected readonly faixas = FAIXA;
-  protected readonly jornada = JORNADA;
-  protected readonly hora = hora;
-  protected readonly minutos = minutos;
   protected readonly percentual = percentual;
   protected readonly haQuanto = haQuanto;
   protected readonly rotulo = rotuloVeiculo;
-  protected readonly distancia = distancia;
   protected readonly previsao = textoPrevisao;
-  protected readonly horarios = horariosDaParada;
 
   protected readonly aba = signal<Aba>('veiculos');
   protected readonly termo = signal('');
@@ -528,23 +353,6 @@ export class Veiculos {
   protected readonly leitores = carga(() => this.api.leitores(this.filtros.parametros()), {
     vazio: (s) => s.leitores.length === 0,
   });
-  protected readonly detalhe = carga(() => {
-    const id = this.selecionadoId();
-    return id === null ? null : this.api.veiculo(id);
-  });
-
-  /** Camada de paradas aprendidas: só busca quando ligada (a consulta é auditada). */
-  protected readonly mostrarParadas = signal(false);
-  protected readonly paradas = carga(() => {
-    const id = this.selecionadoId();
-    return id === null || !this.mostrarParadas() ? null : this.api.paradas(id);
-  });
-  protected readonly paradasNoMapa = computed(() =>
-    this.mostrarParadas() && this.selecionadoId() !== null
-      ? (this.paradas.dados()?.paradas ?? [])
-      : [],
-  );
-
   /** GPS ao vivo: carga inicial (com o rastro do dia) e depois o evento SSE `veiculo.posicao`. */
   protected readonly rastreio = carga(() => this.api.rastreamento());
   protected readonly rastreios = linkedSignal<RastreioVeiculo[]>(
@@ -554,7 +362,10 @@ export class Veiculos {
     () => new Map(this.rastreios().map((r) => [r.veiculoId, r])),
   );
   /** Relógio para o "há X s" do GPS andar sozinho (o GPS chega a cada 5 s; mais rápido não muda nada). */
-  private readonly agora = signal(Date.now());
+  protected readonly agora = signal(Date.now());
+
+  private readonly injetor = inject(Injector);
+  private readonly painelDoDetalhe = viewChild(DetalheDoVeiculo, { read: ElementRef });
 
   protected readonly filtrados = computed(() =>
     filtrarVeiculos(this.status.dados()?.veiculos ?? [], this.termo(), this.estados()),
@@ -593,12 +404,7 @@ export class Veiculos {
     inject(DestroyRef).onDestroy(() => clearInterval(relogio));
     merge(sse.de('veiculo.atualizado'), sse.de('jornada.atualizada'))
       .pipe(auditTime(3000), takeUntilDestroyed())
-      .subscribe(() => {
-        this.status.recarregar(true);
-        if (this.selecionadoId() !== null) {
-          this.detalhe.recarregar(true);
-        }
-      });
+      .subscribe(() => this.status.recarregar(true));
   }
 
   protected rastreioDe(id: number): RastreioVeiculo | undefined {
@@ -611,6 +417,13 @@ export class Veiculos {
 
   protected selecionar(id: number): void {
     this.escolhido.set(id);
+    // Em tela estreita o detalhe fica acima da lista: leva a tela até ele.
+    if (id > 0 && window.matchMedia?.('(max-width: 1000px)').matches) {
+      afterNextRender(
+        () => this.painelDoDetalhe()?.nativeElement.scrollIntoView({ block: 'start' }),
+        { injector: this.injetor },
+      );
+    }
   }
 
   protected situacao(s: string) {

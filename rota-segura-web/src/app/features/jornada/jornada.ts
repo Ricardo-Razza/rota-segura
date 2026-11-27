@@ -294,6 +294,8 @@ export class Jornada {
 
   /** `?aluno=<id>` abre o painel lateral direto (vindo da Presença). Só o id vai na URL. */
   readonly aluno = input<string | undefined>();
+  /** `?onibus=<id>` (vindo da Frota) abre o quadro filtrado por esse veículo. */
+  readonly onibus = input<string | undefined>();
 
   protected readonly colunas = COLUNAS;
   protected readonly jornada = JORNADA;
@@ -357,6 +359,20 @@ export class Jornada {
     effect(() => {
       const id = Number(this.aluno());
       untracked(() => this.selecionadoId.set(Number.isInteger(id) && id > 0 ? id : null));
+    });
+    effect(() => {
+      const id = Number(this.onibus());
+      if (Number.isInteger(id) && id > 0) {
+        untracked(() => {
+          this.veiculoId.set(id);
+          // O menu preserva a URL: sem tirar o parâmetro, o filtro voltaria em toda visita.
+          void this.router.navigate([], {
+            queryParams: { onibus: null },
+            queryParamsHandling: 'merge',
+            replaceUrl: true,
+          });
+        });
+      }
     });
 
     inject(SseService)
