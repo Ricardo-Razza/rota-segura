@@ -8,6 +8,7 @@ import br.com.rotasegura.jornada.application.VisaoDoDiaService.Linha;
 import br.com.rotasegura.jornada.application.VisaoDoDiaService.VisaoDoDia;
 import br.com.rotasegura.jornada.domain.EstadoJornada;
 import br.com.rotasegura.jornada.domain.JornadaDoDia;
+import br.com.rotasegura.presenca.application.CalendarioLetivo;
 import br.com.rotasegura.shared.application.Pagina;
 import br.com.rotasegura.shared.application.Periodo;
 import br.com.rotasegura.shared.erro.AcessoNegadoException;
@@ -30,13 +31,15 @@ public class JornadasPainelService {
     private final VisaoDoDiaService visao;
     private final LeiturasDaApi leiturasDaApi;
     private final EscopoService escopo;
+    private final CalendarioLetivo calendario;
 
     public JornadasPainelService(JornadaService jornadas, VisaoDoDiaService visao, LeiturasDaApi leiturasDaApi,
-                                 EscopoService escopo) {
+                                 EscopoService escopo, CalendarioLetivo calendario) {
         this.jornadas = jornadas;
         this.visao = visao;
         this.leiturasDaApi = leiturasDaApi;
         this.escopo = escopo;
+        this.calendario = calendario;
     }
 
     /** Quadro do dia: jornadas filtradas e paginadas, com o total por estado (antes da paginação). */
@@ -65,13 +68,18 @@ public class JornadasPainelService {
                 resumo.descartes(), resumo.desatualizado(), resumo.incompleto());
     }
 
-    /** Jornadas de um aluno em cada dia do período, respeitando o escopo pelo vínculo mais recente do aluno. */
+    /**
+     * Jornadas de um aluno nos dias letivos do período, respeitando o escopo pelo vínculo mais recente do
+     * aluno. Fim de semana, feriado e recesso só aparecem se houve leitura (reposição), para não virarem falta.
+     */
     public List<JornadaDoDia> doAluno(long alunoId, LocalDate inicio, LocalDate fim) {
         LocalDate hoje = jornadas.hoje();
         Periodo periodo = Periodo.validar(inicio != null ? inicio : hoje, fim != null ? fim : hoje,
                 MAXIMO_DIAS_HISTORICO);
         exigirAlunoNoEscopo(alunoId);
-        return jornadas.doAlunoNoPeriodo(alunoId, periodo);
+        return jornadas.doAlunoNoPeriodo(alunoId, periodo).stream()
+                .filter(j -> calendario.ehLetivo(j.data()) || !j.passos().isEmpty())
+                .toList();
     }
 
     /**

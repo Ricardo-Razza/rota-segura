@@ -42,7 +42,7 @@ public class JornadasController {
     }
 
     @GetMapping("/alunos/{id}/jornadas")
-    @Operation(summary = "Jornadas de um aluno no período (até 31 dias). Sem datas = hoje.")
+    @Operation(summary = "Jornadas de um aluno nos dias letivos do período (até 31 dias). Sem datas = hoje.")
     List<JornadaDoDia> doAluno(@PathVariable long id,
                                @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
                                LocalDate inicio,

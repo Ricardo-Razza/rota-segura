@@ -150,6 +150,26 @@ class PainelEndpointsTest {
     }
 
     @Test
+    void historicoDoAlunoSoTrazDiasLetivosEDiasComLeitura() throws Exception {
+        // 07/03/2026 é sábado (com leitura: aula de reposição) e 08/03 é domingo (sem leitura).
+        when(presencas.listarTodas()).thenReturn(atual(List.of(
+                presenca("1", "101", "2026-03-07 07:00:00", "11"),
+                presenca("2", "101", DIA + " 07:00:00", "11"))));
+        mvc.perform(get("/api/v1/alunos/101/jornadas").param("inicio", "2026-03-06").param("fim", DIA)
+                        .with(perfil("GESTAO")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[*].data", contains("2026-03-06", "2026-03-07", "2026-03-09", DIA)));
+    }
+
+    @Test
+    void historicoDoAlunoPulaFeriadoNacional() throws Exception {
+        mvc.perform(get("/api/v1/alunos/101/jornadas").param("inicio", "2026-04-20").param("fim", "2026-04-22")
+                        .with(perfil("GESTAO")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[*].data", contains("2026-04-20", "2026-04-22")));
+    }
+
+    @Test
     void locaisDaJornadaRespeitamEscopoSaoAuditadosEUsamOGpsDoOnibusNoEmbarque() throws Exception {
         // Coordenadas fictícias. O leitor do ônibus manda um ponto fixo (-10.1234), que é ignorado: o embarque
         // vem do trajeto do ônibus salvo no banco (parado em -10.2 desde 06:58, saiu a ~22 m às 07:04).

@@ -61,8 +61,18 @@ rota-segura:
       chegada: ["2"]
   calendario:
     # A API não expõe calendário escolar. Fim de semana já é excluído; liste aqui feriados e recessos.
-    # Ex.: ["2026-04-21", "2026-06-04"]
-    dias-sem-aula: []
+    # Abaixo, só os feriados nacionais de 2026 que caem em dia de semana. Acrescente os municipais, os pontos
+    # facultativos (carnaval, Corpus Christi), os recessos e os anos seguintes.
+    dias-sem-aula:
+      - "2026-01-01" # Confraternização Universal
+      - "2026-04-03" # Sexta-feira Santa
+      - "2026-04-21" # Tiradentes
+      - "2026-05-01" # Dia do Trabalho
+      - "2026-09-07" # Independência
+      - "2026-10-12" # Nossa Senhora Aparecida
+      - "2026-11-02" # Finados
+      - "2026-11-20" # Consciência Negra
+      - "2026-12-25" # Natal
   dispositivos:
     # Sem leitura há mais que isso, o leitor aparece como OFFLINE.
     limite-offline: 30m
