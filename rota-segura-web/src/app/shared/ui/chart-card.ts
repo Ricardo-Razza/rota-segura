@@ -75,6 +75,10 @@ export type EstadoCard = 'carregando' | 'vazio' | 'erro' | 'ok' | 'desatualizado
       background: var(--vidro);
       box-shadow: var(--vidro-sombra);
     }
+    /* class="baixo": card de pouco conteúdo, sem a altura mínima. */
+    :host(.baixo) .card {
+      min-height: 0;
+    }
     header {
       display: flex;
       align-items: center;

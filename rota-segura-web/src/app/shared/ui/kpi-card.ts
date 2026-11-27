@@ -79,6 +79,37 @@ import { Tom } from './tom';
       color: var(--texto-suave);
       font-size: 12px;
     }
+    /* class="compacto": faixa baixa, rótulo (e detalhe) à esquerda e valor à direita. */
+    :host(.compacto) .kpi {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-content: center;
+      align-items: center;
+      gap: 0 12px;
+      min-height: 56px;
+      padding: 8px 16px;
+      border-radius: var(--raio);
+    }
+    :host(.compacto) .rotulo,
+    :host(.compacto) .detalhe {
+      grid-column: 1;
+    }
+    :host(.compacto) .valor {
+      grid-column: 2;
+      grid-row: 1 / span 2;
+      font-size: 20px;
+    }
+    :host(.compacto) .kpi:not(:has(.detalhe)) .rotulo {
+      grid-row: 1 / span 2;
+    }
+    /* No celular os cards ficam lado a lado: valor embaixo do rótulo, usando a largura toda. */
+    @media (max-width: 600px) {
+      :host(.compacto) .kpi {
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+      }
+    }
   `,
 })
 export class KpiCard {

@@ -1,0 +1,418 @@
+:host {
+  display: block;
+}
+
+/* Cada situação define a cor da borda (--t), do texto (--tx) e do fundo (--f). */
+.tom-sucesso {
+  --t: var(--sucesso);
+  --tx: var(--sucesso);
+  --f: var(--sucesso-fundo);
+}
+.tom-atencao {
+  --t: var(--atencao);
+  --tx: var(--atencao-texto);
+  --f: var(--atencao-fundo);
+}
+.tom-critico {
+  --t: var(--critico);
+  --tx: var(--critico);
+  --f: var(--critico-fundo);
+}
+.tom-info {
+  --t: var(--info);
+  --tx: var(--info);
+  --f: var(--info-fundo);
+}
+.tom-neutro {
+  --t: var(--borda-forte);
+  --tx: var(--texto-suave);
+  --f: var(--neutro-fundo);
+}
+
+h3 {
+  font-size: 17px;
+}
+
+/* Ano e visão, numa linha própria abaixo do título do card. */
+.comandos {
+  display: flex;
+  flex: 1 0 100%;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 8px;
+  border-bottom: 1px solid var(--borda);
+}
+.grupo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 6px;
+}
+/* O campo de ano reserva uma linha para a mensagem; o resto se alinha pela caixa. */
+.grupo--ano {
+  align-items: flex-start;
+  padding-bottom: 0;
+}
+.grupo--ano .rotulo {
+  line-height: 40px;
+}
+.grupo--ano .rs-botao {
+  margin-top: 5px;
+}
+.rotulo {
+  color: var(--texto-suave);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.abas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--borda-forte);
+  border-radius: var(--raio);
+  background: var(--superficie-sutil);
+}
+.abas button {
+  min-width: 46px;
+  padding: 6px 14px;
+  border: 0;
+  border-radius: var(--raio-sm);
+  background: transparent;
+  color: var(--texto-suave);
+  font-weight: 600;
+  cursor: pointer;
+}
+.abas button[aria-pressed='true'] {
+  background: var(--realce);
+  color: var(--texto-sobre-realce);
+}
+.abas button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.sem-registro {
+  margin: 16px 0 8px;
+  padding: 28px;
+  border: 1px dashed var(--borda-forte);
+  border-radius: var(--raio);
+  text-align: center;
+}
+.sem-registro p {
+  margin: 4px 0 12px;
+}
+
+.barra {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+}
+.contagens {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.contagens li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px;
+  border: 1px solid var(--t);
+  border-radius: 999px;
+  background: var(--f);
+  color: var(--tx);
+}
+.contagens strong {
+  font-size: 15px;
+}
+.contagens span {
+  color: var(--texto);
+  font-size: 12px;
+}
+
+.corpo {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 290px;
+  gap: 16px;
+}
+.grade {
+  display: grid;
+  grid-template-columns: minmax(0, 0.5fr) repeat(5, minmax(0, 1fr)) minmax(0, 0.5fr);
+  grid-auto-rows: minmax(104px, auto);
+  grid-template-rows: auto;
+  gap: 6px;
+  align-content: start;
+}
+.semana {
+  padding: 0 4px;
+  color: var(--texto-mudo);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.celula {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 7px 9px;
+  overflow: hidden;
+  border: 1px solid var(--borda);
+  border-radius: var(--raio);
+  text-align: left;
+}
+.celula--estado {
+  border-color: var(--t);
+  background: var(--f);
+  box-shadow: inset 4px 0 0 var(--t);
+  cursor: pointer;
+}
+.celula--hoje {
+  outline: 2px solid var(--marca);
+  outline-offset: 1px;
+}
+.celula[aria-pressed='true'] {
+  outline: 2px solid var(--realce);
+  outline-offset: 2px;
+}
+.celula--fds,
+.celula--FUTURO,
+.celula--SEM_REGISTRO {
+  color: var(--texto-mudo);
+}
+.celula--FUTURO,
+.celula--SEM_REGISTRO {
+  border-style: dashed;
+}
+.celula--FIM_DE_SEMANA {
+  border-color: transparent;
+  background: var(--neutro-fundo);
+  opacity: 0.6;
+}
+.celula--SEM_AULA {
+  background: repeating-linear-gradient(
+    135deg,
+    var(--neutro-fundo) 0 6px,
+    transparent 6px 12px
+  );
+  color: var(--texto-mudo);
+}
+.topo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.topo b {
+  font-size: 15px;
+}
+.topo em {
+  padding: 0 5px;
+  border-radius: 5px;
+  background: var(--marca);
+  color: var(--texto-sobre-marca);
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 800;
+}
+.marcas {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+  color: var(--tx);
+}
+.aviso-dia {
+  color: var(--atencao-texto);
+}
+.situacao {
+  color: var(--tx);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+.horas {
+  margin-top: auto;
+  font-family: var(--fonte-mono);
+  font-size: 11px;
+}
+.trajeto {
+  min-height: 16px;
+  color: var(--texto-suave);
+  font-size: 11px;
+}
+.legenda {
+  margin-top: auto;
+  color: var(--texto-suave);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.detalhe-dia {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid var(--vidro-borda);
+  border-radius: var(--raio);
+  background: var(--superficie-2);
+}
+.detalhe-dia rs-status-badge {
+  align-self: flex-start;
+}
+.detalhe-dia .rs-aviso {
+  margin: 0;
+}
+.passos {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.passos li {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 0 0 14px 24px;
+}
+.passos li::before {
+  content: '';
+  position: absolute;
+  top: 6px;
+  left: 2px;
+  width: 11px;
+  height: 11px;
+  border: 2px solid var(--sucesso);
+  border-radius: 50%;
+  background: var(--sucesso);
+}
+.passos li.faltou::before {
+  border-color: var(--critico);
+  background: transparent;
+}
+.passos li:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  top: 23px;
+  bottom: 2px;
+  left: 8px;
+  width: 2px;
+  background: var(--borda-forte);
+}
+.quando {
+  font-family: var(--fonte-mono);
+  font-size: 19px;
+}
+dl {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px;
+  margin: 0;
+  font-size: 12px;
+}
+dt {
+  color: var(--texto-suave);
+}
+dd {
+  margin: 0;
+  font-weight: 600;
+}
+.detalhe-dia > .rs-botao {
+  justify-content: center;
+  margin-top: auto;
+}
+rs-mapa-jornada {
+  display: block;
+  margin-top: 12px;
+}
+
+.ano {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr));
+  gap: 12px;
+}
+.mini {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--borda);
+  border-radius: var(--raio);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+.mini:hover {
+  border-color: var(--borda-forte);
+  background: var(--neutro-fundo);
+}
+.mini--atual {
+  border-color: var(--marca);
+}
+.mini-topo {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.mini-grade {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+  text-align: center;
+}
+.mini-grade small {
+  color: var(--texto-mudo);
+  font-size: 10px;
+}
+.q {
+  border-radius: 5px;
+  color: var(--texto-mudo);
+  font-size: 10.5px;
+  line-height: 22px;
+}
+.q--estado {
+  background: var(--t);
+  color: var(--texto-sobre-marca);
+  font-weight: 700;
+}
+/* No tema claro, texto branco sobre âmbar não passa em contraste. */
+:host-context([data-tema='claro']) .q--estado.tom-atencao,
+.q--estado.tom-neutro {
+  color: var(--texto);
+}
+.q--SEM_AULA {
+  background: repeating-linear-gradient(135deg, var(--borda-forte) 0 3px, transparent 3px 6px);
+}
+
+@media (max-width: 1000px) {
+  .corpo {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+/* Em tela estreita a célula mostra número e ícone; o resto fica no detalhe do dia. */
+@media (max-width: 700px) {
+  .grade {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    grid-auto-rows: minmax(52px, auto);
+    gap: 4px;
+  }
+  .celula {
+    padding: 5px;
+  }
+  .situacao,
+  .horas,
+  .trajeto,
+  .legenda,
+  .topo em,
+  .aviso-dia {
+    display: none;
+  }
+}
